@@ -9,7 +9,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # Stage 2: Builder
 FROM node:22-alpine AS builder
@@ -33,7 +33,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Set NODE_ENV to production
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 # Copy necessary files for production
 COPY --from=builder /app/dist ./dist
@@ -41,7 +41,7 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-lock.yaml ./
 
 # Install only production dependencies
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod --no-frozen-lockfile
 
 # Add a non-root user
 RUN addgroup --system --gid 1001 nodejs && \
@@ -49,13 +49,9 @@ RUN addgroup --system --gid 1001 nodejs && \
     chown -R nestjs:nodejs /app
 USER nestjs
 
-# Expose the port specified by the PORT environment variable (default: 3001)
-ENV PORT 300
+# Expose the port specified by the PORT environment variable
+ENV PORT=300
 EXPOSE ${PORT}
 
-# Health check to verify app is running
-# HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-#   CMD wget -q -O - http://localhost:${PORT}/api/v1/health || exit 1
-
 # Command to run the application
-CMD ["node", "dist/main"] 
+CMD ["node", "dist/main"]
