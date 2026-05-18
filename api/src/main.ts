@@ -15,6 +15,7 @@ if (typeof globalThis.crypto === 'undefined') {
 
 // Global error handlers to prevent server crashes
 const logger = new Logger('GlobalErrorHandler')
+const firebaseLogger = new Logger('Firebase')
 
 process.on('uncaughtException', (error: Error) => {
   logger.error('Uncaught Exception:', error.stack || error.message)
@@ -54,7 +55,24 @@ async function bootstrap() {
     },
   })
 
-  const firebaseConfig = {
+  const requiredFirebaseEnv = [
+    'FIREBASE_PROJECT_ID',
+    'FIREBASE_PRIVATE_KEY_ID',
+    'FIREBASE_PRIVATE_KEY',
+    'FIREBASE_CLIENT_EMAIL',
+    'FIREBASE_CLIENT_ID',
+    'FIREBASE_CLIENT_C509_CERT_URL',
+  ]
+  const hasFirebaseConfig = requiredFirebaseEnv.every(
+    (key) => !!process.env[key],
+  )
+
+  if (!hasFirebaseConfig) {
+    firebaseLogger.warn(
+      'Firebase service account is not configured. SMS gateway push notifications are disabled.',
+    )
+  } else {
+    const firebaseConfig = {
     type: 'service_account',
     projectId: process.env.FIREBASE_PROJECT_ID,
     privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
@@ -65,11 +83,12 @@ async function bootstrap() {
     tokenUri: 'https://oauth2.googleapis.com/token',
     authProviderX509CertUrl: 'https://www.googleapis.com/oauth2/v1/certs',
     clientC509CertUrl: process.env.FIREBASE_CLIENT_C509_CERT_URL,
-  }
+    }
 
-  firebase.initializeApp({
-    credential: firebase.credential.cert(firebaseConfig),
-  })
+    firebase.initializeApp({
+      credential: firebase.credential.cert(firebaseConfig),
+    })
+  }
 
   app.use(
     '/api/v1/billing/webhook/polar',
