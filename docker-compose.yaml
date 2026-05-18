@@ -59,6 +59,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+    pull_policy: build
     image: textbee-textbee-api:latest
     restart: always
     ports:
@@ -81,6 +82,7 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+    pull_policy: build
     image: textbee-textbee-web:latest
     restart: always
     ports:
