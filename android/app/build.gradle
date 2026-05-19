@@ -58,7 +58,7 @@ android {
         prod {
             dimension "environment"
             applicationId "com.vernu.sms"
-            buildConfigField "String", "API_BASE_URL", '"https://api.textbee.dev/api/v1/"'
+            buildConfigField "String", "API_BASE_URL", '"http://72.61.161.108:3011/api/v1/"'
             buildConfigField "String", "ENVIRONMENT", '"production"'
             resValue "string", "app_name", "textbee.dev"
         }
