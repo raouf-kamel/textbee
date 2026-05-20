@@ -1,228 +1,191 @@
-package com.vernu.sms.helpers;
+package com.vernu.sms.helpers
 
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.os.BatteryManager;
-import android.os.StatFs;
-import android.os.SystemClock;
-import android.util.Log;
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.os.BatteryManager
+import android.os.StatFs
+import android.os.SystemClock
+import android.util.Log
+import com.google.firebase.messaging.FirebaseMessaging
+import com.vernu.sms.ApiManager
+import com.vernu.sms.AppConstants
+import com.vernu.sms.BuildConfig
+import com.vernu.sms.TextBeeUtils
+import com.vernu.sms.dtos.HeartbeatInputDTO
+import com.vernu.sms.dtos.SimInfoCollectionDTO
+import java.io.IOException
+import java.util.Locale
+import java.util.TimeZone
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
-import com.google.firebase.messaging.FirebaseMessaging;
-import com.vernu.sms.ApiManager;
-import com.vernu.sms.AppConstants;
-import com.vernu.sms.BuildConfig;
-import com.vernu.sms.dtos.HeartbeatInputDTO;
-import com.vernu.sms.dtos.HeartbeatResponseDTO;
-import com.vernu.sms.dtos.SimInfoCollectionDTO;
-import com.vernu.sms.TextBeeUtils;
+object HeartbeatHelper {
+    private const val TAG = "HeartbeatHelper"
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Locale;
-import java.util.TimeZone;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
-import retrofit2.Call;
-import retrofit2.Response;
-
-public class HeartbeatHelper {
-    private static final String TAG = "HeartbeatHelper";
-
-    /**
-     * Collects device information and sends a heartbeat request to the API.
-     * 
-     * @param context Application context
-     * @param deviceId Device ID
-     * @param apiKey API key for authentication
-     * @return true if heartbeat was sent successfully, false otherwise
-     */
-    public static boolean sendHeartbeat(Context context, String deviceId, String apiKey) {
-        if (deviceId == null || deviceId.isEmpty()) {
-            Log.d(TAG, "Device not registered, skipping heartbeat");
-            return false;
+    @JvmStatic
+    fun sendHeartbeat(context: Context, deviceId: String?, apiKey: String?): Boolean {
+        if (deviceId.isNullOrEmpty()) {
+            Log.d(TAG, "Device not registered, skipping heartbeat")
+            return false
         }
 
-        if (apiKey == null || apiKey.isEmpty()) {
-            Log.e(TAG, "API key not available, skipping heartbeat");
-            return false;
+        if (apiKey.isNullOrEmpty()) {
+            Log.e(TAG, "API key not available, skipping heartbeat")
+            return false
         }
 
-        // Collect device information
-        HeartbeatInputDTO heartbeatInput = new HeartbeatInputDTO();
+        val heartbeatInput = HeartbeatInputDTO()
 
-        try {
-            // Get FCM token (blocking wait)
-            try {
-                CountDownLatch latch = new CountDownLatch(1);
-                final String[] fcmToken = new String[1];
-                FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        fcmToken[0] = task.getResult();
-                    }
-                    latch.countDown();
-                });
-                if (latch.await(5, TimeUnit.SECONDS) && fcmToken[0] != null) {
-                    heartbeatInput.setFcmToken(fcmToken[0]);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to get FCM token: " + e.getMessage());
-                // Continue without FCM token
-            }
+        return try {
+            collectFcmToken(heartbeatInput)
+            collectBatteryInfo(context, heartbeatInput)
+            collectNetworkInfo(context, heartbeatInput)
 
-            // Get battery information
-            IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-            Intent batteryStatus = context.registerReceiver(null, ifilter);
-            if (batteryStatus != null) {
-                int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-                int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-                int batteryPct = (int) ((level / (float) scale) * 100);
-                heartbeatInput.setBatteryPercentage(batteryPct);
+            heartbeatInput.appVersionName = BuildConfig.VERSION_NAME
+            heartbeatInput.appVersionCode = BuildConfig.VERSION_CODE
+            heartbeatInput.deviceUptimeMillis = SystemClock.uptimeMillis()
 
-                int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-                boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                    status == BatteryManager.BATTERY_STATUS_FULL;
-                heartbeatInput.setIsCharging(isCharging);
-            }
+            val runtime = Runtime.getRuntime()
+            heartbeatInput.memoryFreeBytes = runtime.freeMemory()
+            heartbeatInput.memoryTotalBytes = runtime.totalMemory()
+            heartbeatInput.memoryMaxBytes = runtime.maxMemory()
 
-            // Get network type
-            ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-            if (cm != null) {
-                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-                if (activeNetwork != null && activeNetwork.isConnected()) {
-                    if (activeNetwork.getType() == ConnectivityManager.TYPE_WIFI) {
-                        heartbeatInput.setNetworkType("wifi");
-                    } else if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
-                        heartbeatInput.setNetworkType("cellular");
-                    } else {
-                        heartbeatInput.setNetworkType("none");
-                    }
-                } else {
-                    heartbeatInput.setNetworkType("none");
-                }
-            }
+            val statFs = StatFs(context.filesDir.path)
+            heartbeatInput.storageAvailableBytes = statFs.availableBytes
+            heartbeatInput.storageTotalBytes = statFs.totalBytes
 
-            // Get app version
-            heartbeatInput.setAppVersionName(BuildConfig.VERSION_NAME);
-            heartbeatInput.setAppVersionCode(BuildConfig.VERSION_CODE);
+            heartbeatInput.timezone = TimeZone.getDefault().id
+            heartbeatInput.locale = Locale.getDefault().toString()
 
-            // Get device uptime
-            heartbeatInput.setDeviceUptimeMillis(SystemClock.uptimeMillis());
-
-            // Get memory information
-            Runtime runtime = Runtime.getRuntime();
-            heartbeatInput.setMemoryFreeBytes(runtime.freeMemory());
-            heartbeatInput.setMemoryTotalBytes(runtime.totalMemory());
-            heartbeatInput.setMemoryMaxBytes(runtime.maxMemory());
-
-            // Get storage information
-            File internalStorage = context.getFilesDir();
-            StatFs statFs = new StatFs(internalStorage.getPath());
-            long availableBytes = statFs.getAvailableBytes();
-            long totalBytes = statFs.getTotalBytes();
-            heartbeatInput.setStorageAvailableBytes(availableBytes);
-            heartbeatInput.setStorageTotalBytes(totalBytes);
-
-            // Get system information
-            heartbeatInput.setTimezone(TimeZone.getDefault().getID());
-            heartbeatInput.setLocale(Locale.getDefault().toString());
-
-            // Get receive SMS enabled status
-            boolean receiveSMSEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+            heartbeatInput.receiveSMSEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
                 context,
                 AppConstants.SHARED_PREFS_RECEIVE_SMS_ENABLED_KEY,
-                false
-            );
-            heartbeatInput.setReceiveSMSEnabled(receiveSMSEnabled);
+                false,
+            )
 
-            // SMS send delay (device queue)
-            int smsSendDelaySeconds = SharedPreferenceHelper.getSharedPreferenceInt(
+            heartbeatInput.smsSendDelaySeconds = SharedPreferenceHelper.getSharedPreferenceInt(
                 context,
                 AppConstants.SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY,
-                AppConstants.DEFAULT_SMS_SEND_DELAY_SECONDS
-            );
-            heartbeatInput.setSmsSendDelaySeconds(smsSendDelaySeconds);
+                AppConstants.DEFAULT_SMS_SEND_DELAY_SECONDS,
+            )
 
-            // Collect SIM information
-            SimInfoCollectionDTO simInfoCollection = new SimInfoCollectionDTO();
-            simInfoCollection.setLastUpdated(System.currentTimeMillis());
-            simInfoCollection.setSims(TextBeeUtils.collectSimInfo(context));
-            heartbeatInput.setSimInfo(simInfoCollection);
+            heartbeatInput.simInfo = SimInfoCollectionDTO().apply {
+                lastUpdated = System.currentTimeMillis()
+                sims = TextBeeUtils.collectSimInfo(context)
+            }
 
-            // Send heartbeat request
-            Call<HeartbeatResponseDTO> call = ApiManager.getApiService().heartbeat(deviceId, apiKey, heartbeatInput);
-            Response<HeartbeatResponseDTO> response = call.execute();
+            val response = ApiManager.getApiService()
+                .heartbeat(deviceId, apiKey, heartbeatInput)
+                .execute()
 
-            if (response.isSuccessful() && response.body() != null) {
-                HeartbeatResponseDTO responseBody = response.body();
+            if (response.isSuccessful && response.body() != null) {
+                val responseBody = response.body()!!
                 if (responseBody.fcmTokenUpdated) {
-                    Log.d(TAG, "FCM token was updated during heartbeat");
+                    Log.d(TAG, "FCM token was updated during heartbeat")
                 }
-                
-                // Sync device name from heartbeat response (ignore if blank)
-                if (responseBody.name != null && !responseBody.name.trim().isEmpty()) {
+
+                val name = responseBody.name
+                if (!name.isNullOrBlank()) {
                     SharedPreferenceHelper.setSharedPreferenceString(
                         context,
                         AppConstants.SHARED_PREFS_DEVICE_NAME_KEY,
-                        responseBody.name
-                    );
-                    Log.d(TAG, "Synced device name from heartbeat: " + responseBody.name);
+                        name,
+                    )
+                    Log.d(TAG, "Synced device name from heartbeat: $name")
                 }
-                
-                Log.d(TAG, "Heartbeat sent successfully");
-                return true;
+
+                Log.d(TAG, "Heartbeat sent successfully")
+                true
             } else {
-                Log.e(TAG, "Failed to send heartbeat. Response code: " + (response.code()));
-                return false;
+                Log.e(TAG, "Failed to send heartbeat. Response code: ${response.code()}")
+                false
             }
-        } catch (IOException e) {
-            Log.e(TAG, "Heartbeat API call failed: " + e.getMessage());
-            return false;
-        } catch (Exception e) {
-            Log.e(TAG, "Error collecting device information: " + e.getMessage());
-            return false;
+        } catch (e: IOException) {
+            Log.e(TAG, "Heartbeat API call failed: ${e.message}")
+            false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error collecting device information: ${e.message}")
+            false
         }
     }
 
-    /**
-     * Checks if device is eligible to send heartbeat (registered, enabled, heartbeat enabled).
-     * 
-     * @param context Application context
-     * @return true if device is eligible, false otherwise
-     */
-    public static boolean isDeviceEligibleForHeartbeat(Context context) {
-        // Check if device is registered
-        String deviceId = SharedPreferenceHelper.getSharedPreferenceString(
+    @JvmStatic
+    fun isDeviceEligibleForHeartbeat(context: Context): Boolean {
+        val deviceId = SharedPreferenceHelper.getSharedPreferenceString(
             context,
             AppConstants.SHARED_PREFS_DEVICE_ID_KEY,
-            ""
-        );
+            "",
+        )
 
-        if (deviceId.isEmpty()) {
-            return false;
+        if (deviceId.isNullOrEmpty()) {
+            return false
         }
 
-        // Check if device is enabled
-        boolean deviceEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+        val deviceEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
             context,
             AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY,
-            false
-        );
+            false,
+        )
 
         if (!deviceEnabled) {
-            return false;
+            return false
         }
 
-        // Check if heartbeat feature is enabled
-        boolean heartbeatEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+        return SharedPreferenceHelper.getSharedPreferenceBoolean(
             context,
             AppConstants.SHARED_PREFS_HEARTBEAT_ENABLED_KEY,
-            true // Default to true
-        );
+            true,
+        )
+    }
 
-        return heartbeatEnabled;
+    private fun collectFcmToken(heartbeatInput: HeartbeatInputDTO) {
+        try {
+            val latch = CountDownLatch(1)
+            var fcmToken: String? = null
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    fcmToken = task.result
+                }
+                latch.countDown()
+            }
+            if (latch.await(5, TimeUnit.SECONDS) && fcmToken != null) {
+                heartbeatInput.fcmToken = fcmToken
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get FCM token: ${e.message}")
+        }
+    }
+
+    private fun collectBatteryInfo(context: Context, heartbeatInput: HeartbeatInputDTO) {
+        val batteryStatus = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        if (batteryStatus != null) {
+            val level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+            val scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+            val batteryPct = ((level / scale.toFloat()) * 100).toInt()
+            heartbeatInput.batteryPercentage = batteryPct
+
+            val status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            heartbeatInput.setIsCharging(
+                status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == BatteryManager.BATTERY_STATUS_FULL,
+            )
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun collectNetworkInfo(context: Context, heartbeatInput: HeartbeatInputDTO) {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val activeNetwork = connectivityManager?.activeNetworkInfo
+        heartbeatInput.networkType = if (activeNetwork?.isConnected == true) {
+            when (activeNetwork.type) {
+                ConnectivityManager.TYPE_WIFI -> "wifi"
+                ConnectivityManager.TYPE_MOBILE -> "cellular"
+                else -> "none"
+            }
+        } else {
+            "none"
+        }
     }
 }

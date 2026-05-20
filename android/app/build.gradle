@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
     id 'com.google.firebase.crashlytics'
 }
 
@@ -50,7 +51,7 @@ android {
             dimension "environment"
             applicationId "com.vernu.sms.dev"
             versionNameSuffix "-dev"
-            buildConfigField "String", "API_BASE_URL", '"https://api.dev.textbee.dev/api/v1/"'
+            buildConfigField "String", "API_BASE_URL", '"http://72.61.161.108:3011/api/v1/"'
             buildConfigField "String", "ENVIRONMENT", '"development"'
             resValue "string", "app_name", "textbee.dev (Dev)"
         }
@@ -68,6 +69,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
 }
 
 dependencies {
@@ -78,6 +83,7 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.6.10'
 
     implementation platform('com.google.firebase:firebase-bom:29.2.1')
     implementation 'com.google.firebase:firebase-analytics'

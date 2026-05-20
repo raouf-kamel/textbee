@@ -1,135 +1,58 @@
-package com.vernu.sms.models;
+package com.vernu.sms.models
 
-public class SMSFilterRule {
-    public enum MatchType {
+class SMSFilterRule @JvmOverloads constructor(
+    var pattern: String? = null,
+    var matchType: MatchType? = null,
+    filterTarget: FilterTarget? = FilterTarget.SENDER,
+    var caseSensitive: Boolean = false,
+) {
+    enum class MatchType {
         EXACT,
         STARTS_WITH,
         ENDS_WITH,
-        CONTAINS
+        CONTAINS,
     }
 
-    public enum FilterTarget {
+    enum class FilterTarget {
         SENDER,
         MESSAGE,
-        BOTH
+        BOTH,
     }
 
-    private String pattern;
-    private MatchType matchType;
-    private FilterTarget filterTarget = FilterTarget.SENDER; // Default to sender for backward compatibility
-    private boolean caseSensitive = false; // Default to case insensitive
-
-    public SMSFilterRule() {
-    }
-
-    public SMSFilterRule(String pattern, MatchType matchType) {
-        this.pattern = pattern;
-        this.matchType = matchType;
-        this.filterTarget = FilterTarget.SENDER;
-        this.caseSensitive = false;
-    }
-
-    public SMSFilterRule(String pattern, MatchType matchType, FilterTarget filterTarget) {
-        this.pattern = pattern;
-        this.matchType = matchType;
-        this.filterTarget = filterTarget;
-        this.caseSensitive = false;
-    }
-
-    public SMSFilterRule(String pattern, MatchType matchType, FilterTarget filterTarget, boolean caseSensitive) {
-        this.pattern = pattern;
-        this.matchType = matchType;
-        this.filterTarget = filterTarget;
-        this.caseSensitive = caseSensitive;
-    }
-
-    public String getPattern() {
-        return pattern;
-    }
-
-    public void setPattern(String pattern) {
-        this.pattern = pattern;
-    }
-
-    public MatchType getMatchType() {
-        return matchType;
-    }
-
-    public void setMatchType(MatchType matchType) {
-        this.matchType = matchType;
-    }
-
-    public FilterTarget getFilterTarget() {
-        return filterTarget;
-    }
-
-    public void setFilterTarget(FilterTarget filterTarget) {
-        this.filterTarget = filterTarget != null ? filterTarget : FilterTarget.SENDER;
-    }
-
-    public boolean isCaseSensitive() {
-        return caseSensitive;
-    }
-
-    public void setCaseSensitive(boolean caseSensitive) {
-        this.caseSensitive = caseSensitive;
-    }
-
-    /**
-     * Check if a string matches this filter rule based on match type
-     */
-    private boolean matchesString(String text) {
-        if (pattern == null || text == null) {
-            return false;
+    var filterTarget: FilterTarget = filterTarget ?: FilterTarget.SENDER
+        set(value) {
+            field = value
         }
 
-        String patternToMatch = pattern;
-        String textToMatch = text;
+    fun isCaseSensitive(): Boolean = caseSensitive
 
-        // Apply case sensitivity
-        if (!caseSensitive) {
-            patternToMatch = patternToMatch.toLowerCase();
-            textToMatch = textToMatch.toLowerCase();
-        }
+    private fun matchesString(text: String?): Boolean {
+        val currentPattern = pattern ?: return false
+        val currentMatchType = matchType ?: return false
+        val candidate = text ?: return false
 
-        switch (matchType) {
-            case EXACT:
-                return textToMatch.equals(patternToMatch);
-            case STARTS_WITH:
-                return textToMatch.startsWith(patternToMatch);
-            case ENDS_WITH:
-                return textToMatch.endsWith(patternToMatch);
-            case CONTAINS:
-                return textToMatch.contains(patternToMatch);
-            default:
-                return false;
+        val patternToMatch = if (caseSensitive) currentPattern else currentPattern.lowercase()
+        val textToMatch = if (caseSensitive) candidate else candidate.lowercase()
+
+        return when (currentMatchType) {
+            MatchType.EXACT -> textToMatch == patternToMatch
+            MatchType.STARTS_WITH -> textToMatch.startsWith(patternToMatch)
+            MatchType.ENDS_WITH -> textToMatch.endsWith(patternToMatch)
+            MatchType.CONTAINS -> textToMatch.contains(patternToMatch)
         }
     }
 
-    /**
-     * Check if the given sender and/or message matches this filter rule
-     */
-    public boolean matches(String sender, String message) {
+    fun matches(sender: String?, message: String?): Boolean {
         if (pattern == null) {
-            return false;
+            return false
         }
 
-        switch (filterTarget) {
-            case SENDER:
-                return matchesString(sender);
-            case MESSAGE:
-                return matchesString(message);
-            case BOTH:
-                return matchesString(sender) || matchesString(message);
-            default:
-                return matchesString(sender);
+        return when (filterTarget) {
+            FilterTarget.SENDER -> matchesString(sender)
+            FilterTarget.MESSAGE -> matchesString(message)
+            FilterTarget.BOTH -> matchesString(sender) || matchesString(message)
         }
     }
 
-    /**
-     * Legacy method for backward compatibility - checks sender only
-     */
-    public boolean matches(String sender) {
-        return matches(sender, null);
-    }
+    fun matches(sender: String?): Boolean = matches(sender, null)
 }

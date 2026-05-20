@@ -1,9 +1,12 @@
-package com.vernu.sms.dtos;
+package com.vernu.sms.dtos
 
-import java.util.Map;
+class RegisterDeviceResponseDTO {
+    @JvmField
+    var success: Boolean = false
 
-public class RegisterDeviceResponseDTO {
-    public boolean success;
-    public Map<String, Object> data;
-    public String error;
+    @JvmField
+    var data: MutableMap<String, Any>? = null
+
+    @JvmField
+    var error: String? = null
 }

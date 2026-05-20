@@ -1,787 +1,873 @@
-package com.vernu.sms.activities;
+package com.vernu.sms.activities
 
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.Context;
-import android.content.Intent;
-import com.vernu.sms.activities.SMSFilterActivity;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.util.Log;
-import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageButton;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
-import android.widget.Switch;
-import android.widget.TextView;
-import android.widget.Toast;
-import com.google.android.material.snackbar.Snackbar;
-import com.google.firebase.messaging.FirebaseMessaging;
-import com.google.zxing.integration.android.IntentIntegrator;
-import com.google.zxing.integration.android.IntentResult;
-import com.vernu.sms.ApiManager;
-import com.vernu.sms.AppConstants;
-import com.vernu.sms.BuildConfig;
-import com.vernu.sms.TextBeeUtils;
-import com.vernu.sms.R;
-import com.vernu.sms.dtos.RegisterDeviceInputDTO;
-import com.vernu.sms.dtos.RegisterDeviceResponseDTO;
-import com.vernu.sms.dtos.SimInfoCollectionDTO;
-import com.vernu.sms.helpers.SharedPreferenceHelper;
-import com.vernu.sms.helpers.VersionTracker;
-import com.vernu.sms.helpers.HeartbeatManager;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
-import com.google.gson.Gson;
-import okhttp3.ResponseBody;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Objects;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Log
+import android.view.View
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import android.widget.Switch
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import com.google.android.material.snackbar.Snackbar
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.messaging.FirebaseMessaging
+import com.google.gson.Gson
+import com.google.zxing.integration.android.IntentIntegrator
+import com.vernu.sms.ApiManager
+import com.vernu.sms.AppConstants
+import com.vernu.sms.BuildConfig
+import com.vernu.sms.R
+import com.vernu.sms.TextBeeUtils
+import com.vernu.sms.dtos.RegisterDeviceInputDTO
+import com.vernu.sms.dtos.RegisterDeviceResponseDTO
+import com.vernu.sms.dtos.SimInfoCollectionDTO
+import com.vernu.sms.helpers.HeartbeatManager
+import com.vernu.sms.helpers.SharedPreferenceHelper
+import com.vernu.sms.helpers.VersionTracker
+import okhttp3.ResponseBody
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import java.io.IOException
+import java.util.Arrays
 
-public class MainActivity extends AppCompatActivity {
+class MainActivity : AppCompatActivity() {
+    private lateinit var context: Context
+    private lateinit var gatewaySwitch: Switch
+    private lateinit var receiveSMSSwitch: Switch
+    private lateinit var stickyNotificationSwitch: Switch
+    private lateinit var apiKeyEditText: EditText
+    private lateinit var fcmTokenEditText: EditText
+    private lateinit var deviceIdEditText: EditText
+    private lateinit var deviceNameEditText: EditText
+    private lateinit var smsSendDelayEditText: EditText
+    private lateinit var registerDeviceBtn: Button
+    private lateinit var grantSMSPermissionBtn: Button
+    private lateinit var scanQRBtn: Button
+    private lateinit var checkUpdatesBtn: Button
+    private lateinit var configureFilterBtn: Button
+    private lateinit var copyDeviceIdImgBtn: ImageButton
+    private lateinit var deviceBrandAndModelTxt: TextView
+    private lateinit var deviceIdTxt: TextView
+    private lateinit var appVersionNameTxt: TextView
+    private lateinit var appVersionCodeTxt: TextView
+    private lateinit var defaultSimSlotRadioGroup: RadioGroup
 
-    private Context mContext;
-    private Switch gatewaySwitch, receiveSMSSwitch, stickyNotificationSwitch;
-    private EditText apiKeyEditText, fcmTokenEditText, deviceIdEditText, deviceNameEditText, smsSendDelayEditText;
-    private Button registerDeviceBtn, grantSMSPermissionBtn, scanQRBtn, checkUpdatesBtn, configureFilterBtn;
-    private ImageButton copyDeviceIdImgBtn;
-    private TextView deviceBrandAndModelTxt, deviceIdTxt, appVersionNameTxt, appVersionCodeTxt;
-    private RadioGroup defaultSimSlotRadioGroup;
-    private static final int SCAN_QR_REQUEST_CODE = 49374;
-    private static final int PERMISSION_REQUEST_CODE = 0;
-    private static final long SMS_DELAY_SAVE_DEBOUNCE_MS = 3000L;
-    private final Handler smsDelaySaveHandler = new Handler(Looper.getMainLooper());
-    private Runnable smsDelaySaveRunnable;
-    private String deviceId = null;
-    private static final String TAG = "MainActivity";
+    private val smsDelaySaveHandler = Handler(Looper.getMainLooper())
+    private lateinit var smsDelaySaveRunnable: Runnable
+    private var deviceId: String? = null
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-        mContext = getApplicationContext();
-        deviceId = SharedPreferenceHelper.getSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_ID_KEY, "");
-        setContentView(R.layout.activity_main);
-        gatewaySwitch = findViewById(R.id.gatewaySwitch);
-        receiveSMSSwitch = findViewById(R.id.receiveSMSSwitch);
-        stickyNotificationSwitch = findViewById(R.id.stickyNotificationSwitch);
-        apiKeyEditText = findViewById(R.id.apiKeyEditText);
-        fcmTokenEditText = findViewById(R.id.fcmTokenEditText);
-        deviceIdEditText = findViewById(R.id.deviceIdEditText);
-        deviceNameEditText = findViewById(R.id.deviceNameEditText);
-        registerDeviceBtn = findViewById(R.id.registerDeviceBtn);
-        grantSMSPermissionBtn = findViewById(R.id.grantSMSPermissionBtn);
-        scanQRBtn = findViewById(R.id.scanQRButton);
-        deviceBrandAndModelTxt = findViewById(R.id.deviceBrandAndModelTxt);
-        deviceIdTxt = findViewById(R.id.deviceIdTxt);
-        copyDeviceIdImgBtn = findViewById(R.id.copyDeviceIdImgBtn);
-        defaultSimSlotRadioGroup = findViewById(R.id.defaultSimSlotRadioGroup);
-        appVersionNameTxt = findViewById(R.id.appVersionNameTxt);
-        appVersionCodeTxt = findViewById(R.id.appVersionCodeTxt);
-        checkUpdatesBtn = findViewById(R.id.checkUpdatesBtn);
-        configureFilterBtn = findViewById(R.id.configureFilterBtn);
-        smsSendDelayEditText = findViewById(R.id.smsSendDelayEditText);
+        context = applicationContext
+        deviceId = SharedPreferenceHelper.getSharedPreferenceString(
+            context,
+            AppConstants.SHARED_PREFS_DEVICE_ID_KEY,
+            ""
+        )
+        setContentView(R.layout.activity_main)
+        bindViews()
+        initializeDeviceInfo()
+        setupStartupServices()
+        setupPermissions()
+        setupClipboard()
+        setupStoredSettings()
+        setupGatewaySwitch()
+        setupReceiveSmsSwitch()
+        setupStickyNotificationSwitch()
+        setupActions()
+        setupSmsSendDelay()
+    }
 
-        deviceIdTxt.setText(deviceId);
-        deviceIdEditText.setText(deviceId);
-        deviceBrandAndModelTxt.setText(Build.BRAND + " " + Build.MODEL);
-        
-        // Set app version information
-        String versionName = BuildConfig.VERSION_NAME;
-        appVersionNameTxt.setText(versionName);
-        appVersionCodeTxt.setText(String.valueOf(BuildConfig.VERSION_CODE));
-        
-        // Check for app version changes and report if needed
-        if (VersionTracker.hasVersionChanged(mContext)) {
-            Log.d(TAG, "App version changed or first launch, reporting to server");
-            VersionTracker.reportVersionToServer(mContext);
+    private fun bindViews() {
+        gatewaySwitch = findViewById(R.id.gatewaySwitch)
+        receiveSMSSwitch = findViewById(R.id.receiveSMSSwitch)
+        stickyNotificationSwitch = findViewById(R.id.stickyNotificationSwitch)
+        apiKeyEditText = findViewById(R.id.apiKeyEditText)
+        fcmTokenEditText = findViewById(R.id.fcmTokenEditText)
+        deviceIdEditText = findViewById(R.id.deviceIdEditText)
+        deviceNameEditText = findViewById(R.id.deviceNameEditText)
+        smsSendDelayEditText = findViewById(R.id.smsSendDelayEditText)
+        registerDeviceBtn = findViewById(R.id.registerDeviceBtn)
+        grantSMSPermissionBtn = findViewById(R.id.grantSMSPermissionBtn)
+        scanQRBtn = findViewById(R.id.scanQRButton)
+        checkUpdatesBtn = findViewById(R.id.checkUpdatesBtn)
+        configureFilterBtn = findViewById(R.id.configureFilterBtn)
+        copyDeviceIdImgBtn = findViewById(R.id.copyDeviceIdImgBtn)
+        deviceBrandAndModelTxt = findViewById(R.id.deviceBrandAndModelTxt)
+        deviceIdTxt = findViewById(R.id.deviceIdTxt)
+        appVersionNameTxt = findViewById(R.id.appVersionNameTxt)
+        appVersionCodeTxt = findViewById(R.id.appVersionCodeTxt)
+        defaultSimSlotRadioGroup = findViewById(R.id.defaultSimSlotRadioGroup)
+    }
+
+    private fun initializeDeviceInfo() {
+        deviceIdTxt.text = deviceId
+        deviceIdEditText.setText(deviceId)
+        deviceBrandAndModelTxt.text = "${Build.BRAND} ${Build.MODEL}"
+
+        val versionName = BuildConfig.VERSION_NAME
+        appVersionNameTxt.text = versionName
+        appVersionCodeTxt.text = BuildConfig.VERSION_CODE.toString()
+
+        if (VersionTracker.hasVersionChanged(context)) {
+            Log.d(TAG, "App version changed or first launch, reporting to server")
+            VersionTracker.reportVersionToServer(context)
         }
-        
-        // Initialize Crashlytics with user information
-        FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
-        crashlytics.setCustomKey("device_id", deviceId != null ? deviceId : "not_registered");
-        crashlytics.setCustomKey("device_model", Build.MODEL);
-        crashlytics.setCustomKey("app_version", versionName);
-        crashlytics.setCustomKey("app_version_code", BuildConfig.VERSION_CODE);
 
-        // Start sticky notification service if enabled
-        boolean gatewayEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY, false);
-        boolean stickyNotificationEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY, false);
+        FirebaseCrashlytics.getInstance().apply {
+            setCustomKey("device_id", deviceId ?: "not_registered")
+            setCustomKey("device_model", Build.MODEL)
+            setCustomKey("app_version", versionName)
+            setCustomKey("app_version_code", BuildConfig.VERSION_CODE)
+        }
+
+        registerDeviceBtn.text = if (deviceId.isNullOrEmpty()) "Register" else "Update"
+    }
+
+    private fun setupStartupServices() {
+        val gatewayEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+            context,
+            AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY,
+            false
+        )
+        val stickyNotificationEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+            context,
+            AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY,
+            false
+        )
+
         if (gatewayEnabled && stickyNotificationEnabled) {
-            TextBeeUtils.startStickyNotificationService(mContext);
-            Log.d(TAG, "Starting sticky notification service on app start");
+            TextBeeUtils.startStickyNotificationService(context)
+            Log.d(TAG, "Starting sticky notification service on app start")
         }
 
-        // Schedule heartbeat if device is enabled and registered
-        if (gatewayEnabled && !deviceId.isEmpty()) {
-            HeartbeatManager.scheduleHeartbeat(mContext);
-            Log.d(TAG, "Scheduling heartbeat on app start");
+        if (gatewayEnabled && !deviceId.isNullOrEmpty()) {
+            HeartbeatManager.scheduleHeartbeat(context)
+            Log.d(TAG, "Scheduling heartbeat on app start")
         }
+    }
 
-        if (deviceId == null || deviceId.isEmpty()) {
-            registerDeviceBtn.setText("Register");
+    private fun setupPermissions() {
+        val missingPermissions = AppConstants.requiredPermissions
+            .filter { permission -> !TextBeeUtils.isPermissionGranted(context, permission) }
+            .toTypedArray()
+
+        if (missingPermissions.isEmpty()) {
+            grantSMSPermissionBtn.isEnabled = false
+            grantSMSPermissionBtn.text = "Permission Granted"
+            renderAvailableSimOptions()
         } else {
-            registerDeviceBtn.setText("Update");
+            Snackbar.make(
+                grantSMSPermissionBtn,
+                "Please Grant Required Permissions to continue: ${Arrays.toString(missingPermissions)}",
+                Snackbar.LENGTH_SHORT
+            ).show()
+            grantSMSPermissionBtn.isEnabled = true
+            grantSMSPermissionBtn.setOnClickListener(::handleRequestPermissions)
         }
+    }
 
-        String[] missingPermissions = Arrays.stream(AppConstants.requiredPermissions).filter(permission -> !TextBeeUtils.isPermissionGranted(mContext, permission)).toArray(String[]::new);
-        if (missingPermissions.length == 0) {
-            grantSMSPermissionBtn.setEnabled(false);
-            grantSMSPermissionBtn.setText("Permission Granted");
-            renderAvailableSimOptions();
-        } else {
-            Snackbar.make(grantSMSPermissionBtn, "Please Grant Required Permissions to continue: " + Arrays.toString(missingPermissions), Snackbar.LENGTH_SHORT).show();
-            grantSMSPermissionBtn.setEnabled(true);
-            grantSMSPermissionBtn.setOnClickListener(this::handleRequestPermissions);
+    private fun setupClipboard() {
+        copyDeviceIdImgBtn.setOnClickListener { view ->
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Device ID", deviceId)
+            clipboard.setPrimaryClip(clip)
+            Snackbar.make(view, "Copied", Snackbar.LENGTH_LONG).show()
         }
+    }
 
-//        TextBeeUtils.startStickyNotificationService(mContext);
+    private fun setupStoredSettings() {
+        apiKeyEditText.setText(
+            SharedPreferenceHelper.getSharedPreferenceString(
+                context,
+                AppConstants.SHARED_PREFS_API_KEY_KEY,
+                ""
+            )
+        )
 
-        copyDeviceIdImgBtn.setOnClickListener(view -> {
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clip = ClipData.newPlainText("Device ID", deviceId);
-            clipboard.setPrimaryClip(clip);
-            Snackbar.make(view, "Copied", Snackbar.LENGTH_LONG).show();
-        });
+        val storedDeviceName = SharedPreferenceHelper.getSharedPreferenceString(
+            context,
+            AppConstants.SHARED_PREFS_DEVICE_NAME_KEY,
+            ""
+        ).orEmpty()
+        deviceNameEditText.setText(
+            if (storedDeviceName.isEmpty()) "${Build.BRAND} ${Build.MODEL}" else storedDeviceName
+        )
 
-        apiKeyEditText.setText(SharedPreferenceHelper.getSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_API_KEY_KEY, ""));
-        String storedDeviceName = SharedPreferenceHelper.getSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_NAME_KEY, "");
-        if (storedDeviceName.isEmpty()) {
-            deviceNameEditText.setText(Build.BRAND + " " + Build.MODEL);
-        } else {
-            deviceNameEditText.setText(storedDeviceName);
-        }
-        gatewaySwitch.setChecked(SharedPreferenceHelper.getSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY, false));
-        gatewaySwitch.setOnCheckedChangeListener((compoundButton, isCheked) -> {
-            View view = compoundButton.getRootView();
-            compoundButton.setEnabled(false);
-            String key = apiKeyEditText.getText().toString();
+        gatewaySwitch.isChecked = SharedPreferenceHelper.getSharedPreferenceBoolean(
+            context,
+            AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY,
+            false
+        )
+        receiveSMSSwitch.isChecked = SharedPreferenceHelper.getSharedPreferenceBoolean(
+            context,
+            AppConstants.SHARED_PREFS_RECEIVE_SMS_ENABLED_KEY,
+            false
+        )
+        stickyNotificationSwitch.isChecked = SharedPreferenceHelper.getSharedPreferenceBoolean(
+            context,
+            AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY,
+            false
+        )
+    }
 
-            RegisterDeviceInputDTO registerDeviceInput = new RegisterDeviceInputDTO();
-            registerDeviceInput.setEnabled(isCheked);
-            registerDeviceInput.setAppVersionCode(BuildConfig.VERSION_CODE);
-            registerDeviceInput.setAppVersionName(BuildConfig.VERSION_NAME);
+    private fun setupGatewaySwitch() {
+        gatewaySwitch.setOnCheckedChangeListener { compoundButton, isChecked ->
+            val view = compoundButton.rootView
+            compoundButton.isEnabled = false
+            val key = apiKeyEditText.text.toString()
 
-            Call<RegisterDeviceResponseDTO> apiCall = ApiManager.getApiService().updateDevice(deviceId, key, registerDeviceInput);
-            apiCall.enqueue(new Callback<RegisterDeviceResponseDTO>() {
-                @Override
-                public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
-                    Log.d(TAG, response.toString());
-                    if (!response.isSuccessful()) {
-                        Snackbar.make(view, extractErrorMessage(response), Snackbar.LENGTH_LONG).show();
-                        compoundButton.setEnabled(true);
-                        return;
-                    }
-                    Snackbar.make(view, "Gateway " + (isCheked ? "enabled" : "disabled"), Snackbar.LENGTH_LONG).show();
-                    SharedPreferenceHelper.setSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY, isCheked);
-                    boolean enabled = Boolean.TRUE.equals(Objects.requireNonNull(response.body()).data.get("enabled"));
-                    compoundButton.setChecked(enabled);
-                    if (enabled) {
-                        // Check if sticky notification is enabled
-                        if (SharedPreferenceHelper.getSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY, false)) {
-                            TextBeeUtils.startStickyNotificationService(mContext);
+            val registerDeviceInput = RegisterDeviceInputDTO().apply {
+                enabled = isChecked
+                appVersionCode = BuildConfig.VERSION_CODE
+                appVersionName = BuildConfig.VERSION_NAME
+            }
+
+            ApiManager.getApiService()
+                .updateDevice(deviceId, key, registerDeviceInput)
+                .enqueue(object : Callback<RegisterDeviceResponseDTO> {
+                    override fun onResponse(
+                        call: Call<RegisterDeviceResponseDTO>,
+                        response: Response<RegisterDeviceResponseDTO>
+                    ) {
+                        Log.d(TAG, response.toString())
+                        if (!response.isSuccessful) {
+                            Snackbar.make(view, extractErrorMessage(response), Snackbar.LENGTH_LONG).show()
+                            compoundButton.isEnabled = true
+                            return
                         }
-                        // Schedule heartbeat
-                        HeartbeatManager.scheduleHeartbeat(mContext);
-                    } else {
-                        TextBeeUtils.stopStickyNotificationService(mContext);
-                        // Cancel heartbeat
-                        HeartbeatManager.cancelHeartbeat(mContext);
+
+                        Snackbar.make(
+                            view,
+                            "Gateway ${if (isChecked) "enabled" else "disabled"}",
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                        SharedPreferenceHelper.setSharedPreferenceBoolean(
+                            context,
+                            AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY,
+                            isChecked
+                        )
+
+                        val enabled = response.body()?.data?.get("enabled") == true
+                        compoundButton.isChecked = enabled
+                        if (enabled) {
+                            if (SharedPreferenceHelper.getSharedPreferenceBoolean(
+                                    context,
+                                    AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY,
+                                    false
+                                )
+                            ) {
+                                TextBeeUtils.startStickyNotificationService(context)
+                            }
+                            HeartbeatManager.scheduleHeartbeat(context)
+                        } else {
+                            TextBeeUtils.stopStickyNotificationService(context)
+                            HeartbeatManager.cancelHeartbeat(context)
+                        }
+                        compoundButton.isEnabled = true
                     }
-                    compoundButton.setEnabled(true);
-                }
-                @Override
-                public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
-                    Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show();
-                    Log.e(TAG, "API_ERROR "+ t.getMessage());
-                    Log.e(TAG, "API_ERROR "+ t.getLocalizedMessage());
-                    TextBeeUtils.logException(t, "Error updating device");
-                    compoundButton.setEnabled(true);
-                }
-            });
-        });
 
-        receiveSMSSwitch.setChecked(SharedPreferenceHelper.getSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_RECEIVE_SMS_ENABLED_KEY, false));
-        receiveSMSSwitch.setOnCheckedChangeListener((compoundButton, isCheked) -> {
-            View view = compoundButton.getRootView();
-            SharedPreferenceHelper.setSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_RECEIVE_SMS_ENABLED_KEY, isCheked);
-            compoundButton.setChecked(isCheked);
-            Snackbar.make(view, "Receive SMS " + (isCheked ? "enabled" : "disabled"), Snackbar.LENGTH_LONG).show();
-        });
+                    override fun onFailure(call: Call<RegisterDeviceResponseDTO>, t: Throwable) {
+                        Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show()
+                        Log.e(TAG, "API_ERROR ${t.message}")
+                        Log.e(TAG, "API_ERROR ${t.localizedMessage}")
+                        TextBeeUtils.logException(t, "Error updating device")
+                        compoundButton.isEnabled = true
+                    }
+                })
+        }
+    }
 
-        // Setup sticky notification switch
-        stickyNotificationSwitch.setChecked(SharedPreferenceHelper.getSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY, false));
-        stickyNotificationSwitch.setOnCheckedChangeListener((compoundButton, isChecked) -> {
-            View view = compoundButton.getRootView();
-            SharedPreferenceHelper.setSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY, isChecked);
-            
+    private fun setupReceiveSmsSwitch() {
+        receiveSMSSwitch.setOnCheckedChangeListener { compoundButton, isChecked ->
+            val view = compoundButton.rootView
+            SharedPreferenceHelper.setSharedPreferenceBoolean(
+                context,
+                AppConstants.SHARED_PREFS_RECEIVE_SMS_ENABLED_KEY,
+                isChecked
+            )
+            compoundButton.isChecked = isChecked
+            Snackbar.make(
+                view,
+                "Receive SMS ${if (isChecked) "enabled" else "disabled"}",
+                Snackbar.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    private fun setupStickyNotificationSwitch() {
+        stickyNotificationSwitch.setOnCheckedChangeListener { compoundButton, isChecked ->
+            val view = compoundButton.rootView
+            SharedPreferenceHelper.setSharedPreferenceBoolean(
+                context,
+                AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY,
+                isChecked
+            )
+
             if (isChecked) {
-                TextBeeUtils.startStickyNotificationService(mContext);
-                Snackbar.make(view, "Background service enabled - app will be more reliable", Snackbar.LENGTH_LONG).show();
+                TextBeeUtils.startStickyNotificationService(context)
+                Snackbar.make(
+                    view,
+                    "Background service enabled - app will be more reliable",
+                    Snackbar.LENGTH_LONG
+                ).show()
             } else {
-                TextBeeUtils.stopStickyNotificationService(mContext);
-                Snackbar.make(view, "Background service disabled - app may be killed when in background", Snackbar.LENGTH_LONG).show();
+                TextBeeUtils.stopStickyNotificationService(context)
+                Snackbar.make(
+                    view,
+                    "Background service disabled - app may be killed when in background",
+                    Snackbar.LENGTH_LONG
+                ).show()
             }
-        });
-
-        // TODO: check gateway status/api key/device validity and update UI accordingly
-        registerDeviceBtn.setOnClickListener(view -> {
-            String _deviceId = SharedPreferenceHelper.getSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_ID_KEY, "");
-            if (_deviceId == null || _deviceId.isEmpty()) {
-                handleRegisterDevice();
-            } else {
-                handleUpdateDevice();
-            }
-        });
-        scanQRBtn.setOnClickListener(view -> {
-            IntentIntegrator intentIntegrator = new IntentIntegrator(MainActivity.this);
-            intentIntegrator.setPrompt("Go to textbee.dev/dashboard and click Register Device to generate QR Code");
-            intentIntegrator.setRequestCode(SCAN_QR_REQUEST_CODE);
-            intentIntegrator.initiateScan();
-        });
-        
-        checkUpdatesBtn.setOnClickListener(view -> {
-            String versionInfo = BuildConfig.VERSION_NAME + "(" + BuildConfig.VERSION_CODE + ")";
-            String encodedVersionInfo = android.net.Uri.encode(versionInfo);
-            String downloadUrl = "https://textbee.dev/download?currentVersion=" + encodedVersionInfo;
-            Intent browserIntent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(downloadUrl));
-            startActivity(browserIntent);
-        });
-
-        configureFilterBtn.setOnClickListener(view -> {
-            Intent filterIntent = new Intent(MainActivity.this, SMSFilterActivity.class);
-            startActivity(filterIntent);
-        });
-
-        // SMS Send Delay setting: save 3 seconds after user stops typing
-        int currentDelay = SharedPreferenceHelper.getSharedPreferenceInt(
-                mContext, AppConstants.SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY, AppConstants.DEFAULT_SMS_SEND_DELAY_SECONDS);
-        smsSendDelayEditText.setText(String.valueOf(currentDelay));
-        smsDelaySaveRunnable = this::saveSendDelay;
-        smsSendDelayEditText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                smsDelaySaveHandler.removeCallbacks(smsDelaySaveRunnable);
-                smsDelaySaveHandler.postDelayed(smsDelaySaveRunnable, SMS_DELAY_SAVE_DEBOUNCE_MS);
-            }
-        });
-        smsSendDelayEditText.setOnEditorActionListener((v, actionId, event) -> {
-            smsDelaySaveHandler.removeCallbacks(smsDelaySaveRunnable);
-            saveSendDelay();
-            return false;
-        });
+        }
     }
 
-    private void saveSendDelay() {
-        String text = smsSendDelayEditText.getText().toString().trim();
+    private fun setupActions() {
+        registerDeviceBtn.setOnClickListener {
+            val storedDeviceId = SharedPreferenceHelper.getSharedPreferenceString(
+                context,
+                AppConstants.SHARED_PREFS_DEVICE_ID_KEY,
+                ""
+            )
+            if (storedDeviceId.isNullOrEmpty()) {
+                handleRegisterDevice()
+            } else {
+                handleUpdateDevice()
+            }
+        }
+
+        scanQRBtn.setOnClickListener {
+            IntentIntegrator(this).apply {
+                setPrompt("Go to textbee.dev/dashboard and click Register Device to generate QR Code")
+                setRequestCode(SCAN_QR_REQUEST_CODE)
+                initiateScan()
+            }
+        }
+
+        checkUpdatesBtn.setOnClickListener {
+            val versionInfo = "${BuildConfig.VERSION_NAME}(${BuildConfig.VERSION_CODE})"
+            val encodedVersionInfo = Uri.encode(versionInfo)
+            val downloadUrl = "https://textbee.dev/download?currentVersion=$encodedVersionInfo"
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)))
+        }
+
+        configureFilterBtn.setOnClickListener {
+            startActivity(Intent(this, SMSFilterActivity::class.java))
+        }
+    }
+
+    private fun setupSmsSendDelay() {
+        val currentDelay = SharedPreferenceHelper.getSharedPreferenceInt(
+            context,
+            AppConstants.SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY,
+            AppConstants.DEFAULT_SMS_SEND_DELAY_SECONDS
+        )
+        smsSendDelayEditText.setText(currentDelay.toString())
+        smsDelaySaveRunnable = Runnable { saveSendDelay() }
+        smsSendDelayEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+
+            override fun afterTextChanged(s: Editable?) {
+                smsDelaySaveHandler.removeCallbacks(smsDelaySaveRunnable)
+                smsDelaySaveHandler.postDelayed(smsDelaySaveRunnable, SMS_DELAY_SAVE_DEBOUNCE_MS)
+            }
+        })
+        smsSendDelayEditText.setOnEditorActionListener { _, _, _ ->
+            smsDelaySaveHandler.removeCallbacks(smsDelaySaveRunnable)
+            saveSendDelay()
+            false
+        }
+    }
+
+    private fun saveSendDelay() {
+        val text = smsSendDelayEditText.text.toString().trim()
         if (text.isEmpty()) {
-            int defaultDelay = AppConstants.DEFAULT_SMS_SEND_DELAY_SECONDS;
-            smsSendDelayEditText.setText(String.valueOf(defaultDelay));
-            SharedPreferenceHelper.setSharedPreferenceInt(mContext, AppConstants.SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY, defaultDelay);
-            Snackbar.make(smsSendDelayEditText, "SMS send delay saved (" + defaultDelay + " sec)", Snackbar.LENGTH_SHORT).show();
-            return;
+            val defaultDelay = AppConstants.DEFAULT_SMS_SEND_DELAY_SECONDS
+            smsSendDelayEditText.setText(defaultDelay.toString())
+            SharedPreferenceHelper.setSharedPreferenceInt(
+                context,
+                AppConstants.SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY,
+                defaultDelay
+            )
+            Snackbar.make(
+                smsSendDelayEditText,
+                "SMS send delay saved ($defaultDelay sec)",
+                Snackbar.LENGTH_SHORT
+            ).show()
+            return
         }
+
         try {
-            int value = Integer.parseInt(text);
-            if (value < 0) {
-                value = 0;
-                smsSendDelayEditText.setText("0");
-                SharedPreferenceHelper.setSharedPreferenceInt(mContext, AppConstants.SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY, 0);
-                Snackbar.make(smsSendDelayEditText, "Minimum delay is 0 seconds. Saved.", Snackbar.LENGTH_SHORT).show();
-            } else if (value > 3600) {
-                value = 3600;
-                smsSendDelayEditText.setText("3600");
-                SharedPreferenceHelper.setSharedPreferenceInt(mContext, AppConstants.SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY, 3600);
-                Snackbar.make(smsSendDelayEditText, "Maximum delay is 3600 seconds. Saved.", Snackbar.LENGTH_SHORT).show();
-            } else {
-                SharedPreferenceHelper.setSharedPreferenceInt(mContext, AppConstants.SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY, value);
-                Snackbar.make(smsSendDelayEditText, "SMS send delay saved (" + value + " sec)", Snackbar.LENGTH_SHORT).show();
+            val value = text.toInt().coerceIn(0, 3600)
+            when {
+                value != text.toInt() && value == 0 -> {
+                    smsSendDelayEditText.setText("0")
+                    Snackbar.make(smsSendDelayEditText, "Minimum delay is 0 seconds. Saved.", Snackbar.LENGTH_SHORT).show()
+                }
+                value != text.toInt() && value == 3600 -> {
+                    smsSendDelayEditText.setText("3600")
+                    Snackbar.make(smsSendDelayEditText, "Maximum delay is 3600 seconds. Saved.", Snackbar.LENGTH_SHORT).show()
+                }
+                else -> {
+                    Snackbar.make(
+                        smsSendDelayEditText,
+                        "SMS send delay saved ($value sec)",
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
             }
-        } catch (NumberFormatException e) {
-            int defaultDelay = AppConstants.DEFAULT_SMS_SEND_DELAY_SECONDS;
-            smsSendDelayEditText.setText(String.valueOf(defaultDelay));
-            SharedPreferenceHelper.setSharedPreferenceInt(mContext, AppConstants.SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY, defaultDelay);
-            Snackbar.make(smsSendDelayEditText, "Invalid value. Reset to " + defaultDelay + " sec.", Snackbar.LENGTH_SHORT).show();
+            SharedPreferenceHelper.setSharedPreferenceInt(
+                context,
+                AppConstants.SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY,
+                value
+            )
+        } catch (e: NumberFormatException) {
+            val defaultDelay = AppConstants.DEFAULT_SMS_SEND_DELAY_SECONDS
+            smsSendDelayEditText.setText(defaultDelay.toString())
+            SharedPreferenceHelper.setSharedPreferenceInt(
+                context,
+                AppConstants.SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY,
+                defaultDelay
+            )
+            Snackbar.make(
+                smsSendDelayEditText,
+                "Invalid value. Reset to $defaultDelay sec.",
+                Snackbar.LENGTH_SHORT
+            ).show()
         }
     }
 
-    private void renderAvailableSimOptions() {
+    private fun renderAvailableSimOptions() {
         try {
-            defaultSimSlotRadioGroup.removeAllViews();
-            
-            // Set radio group styling for dark mode compatibility
-            defaultSimSlotRadioGroup.setBackgroundColor(getResources().getColor(R.color.background_secondary));
-            defaultSimSlotRadioGroup.setPadding(16, 8, 16, 8);
-            
-            // Create the default radio button with proper styling
-            RadioButton defaultSimSlotRadioBtn = new RadioButton(mContext);
-            defaultSimSlotRadioBtn.setText("Device Default");
-            defaultSimSlotRadioBtn.setId((int)123456);
-            applyRadioButtonStyle(defaultSimSlotRadioBtn);
-            defaultSimSlotRadioGroup.addView(defaultSimSlotRadioBtn);
-            
-            // Create radio buttons for each SIM with proper styling
-            TextBeeUtils.getAvailableSimSlots(mContext).forEach(subscriptionInfo -> {
-                String displayName = subscriptionInfo.getDisplayName() != null ? subscriptionInfo.getDisplayName().toString() : "Unknown";
-                String simInfo = displayName + " (Subscription ID: " + subscriptionInfo.getSubscriptionId() + ")";
-                RadioButton radioButton = new RadioButton(mContext);
-                radioButton.setText(simInfo);
-                radioButton.setId(subscriptionInfo.getSubscriptionId());
-                applyRadioButtonStyle(radioButton);
-                defaultSimSlotRadioGroup.addView(radioButton);
-            });
+            defaultSimSlotRadioGroup.removeAllViews()
+            @Suppress("DEPRECATION")
+            defaultSimSlotRadioGroup.setBackgroundColor(resources.getColor(R.color.background_secondary))
+            defaultSimSlotRadioGroup.setPadding(16, 8, 16, 8)
 
-            // Check the preferred SIM based on saved preferences
-            int preferredSim = SharedPreferenceHelper.getSharedPreferenceInt(mContext, AppConstants.SHARED_PREFS_PREFERRED_SIM_KEY, -1);
+            val defaultSimSlotRadioBtn = RadioButton(context).apply {
+                text = "Device Default"
+                id = DEFAULT_SIM_RADIO_ID
+                applyRadioButtonStyle(this)
+            }
+            defaultSimSlotRadioGroup.addView(defaultSimSlotRadioBtn)
+
+            TextBeeUtils.getAvailableSimSlots(context).forEach { subscriptionInfo ->
+                val displayName = subscriptionInfo.displayName?.toString() ?: "Unknown"
+                val simInfo = "$displayName (Subscription ID: ${subscriptionInfo.subscriptionId})"
+                val radioButton = RadioButton(context).apply {
+                    text = simInfo
+                    id = subscriptionInfo.subscriptionId
+                    applyRadioButtonStyle(this)
+                }
+                defaultSimSlotRadioGroup.addView(radioButton)
+            }
+
+            val preferredSim = SharedPreferenceHelper.getSharedPreferenceInt(
+                context,
+                AppConstants.SHARED_PREFS_PREFERRED_SIM_KEY,
+                -1
+            )
             if (preferredSim == -1) {
-                defaultSimSlotRadioGroup.check(defaultSimSlotRadioBtn.getId());
+                defaultSimSlotRadioGroup.check(defaultSimSlotRadioBtn.id)
             } else {
-                defaultSimSlotRadioGroup.check(preferredSim);
+                defaultSimSlotRadioGroup.check(preferredSim)
             }
-            
-            // Set the listener for SIM selection changes
-            defaultSimSlotRadioGroup.setOnCheckedChangeListener((radioGroup, i) -> {
-                RadioButton radioButton = findViewById(i);
-                if (radioButton == null) {
-                    return;
-                }
-                radioButton.setChecked(true);
-                if("Device Default".equals(radioButton.getText().toString())) {
-                    SharedPreferenceHelper.clearSharedPreference(mContext, AppConstants.SHARED_PREFS_PREFERRED_SIM_KEY);
+
+            defaultSimSlotRadioGroup.setOnCheckedChangeListener { _, checkedId ->
+                val radioButton = findViewById<RadioButton>(checkedId) ?: return@setOnCheckedChangeListener
+                radioButton.isChecked = true
+                if (radioButton.text.toString() == "Device Default") {
+                    SharedPreferenceHelper.clearSharedPreference(context, AppConstants.SHARED_PREFS_PREFERRED_SIM_KEY)
                 } else {
-                    SharedPreferenceHelper.setSharedPreferenceInt(mContext, AppConstants.SHARED_PREFS_PREFERRED_SIM_KEY, radioButton.getId());
+                    SharedPreferenceHelper.setSharedPreferenceInt(
+                        context,
+                        AppConstants.SHARED_PREFS_PREFERRED_SIM_KEY,
+                        radioButton.id
+                    )
                 }
-            });
-        } catch (Exception e) {
-            Snackbar.make(defaultSimSlotRadioGroup.getRootView(), "Error: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
-            Log.e(TAG, "SIM_SLOT_ERROR "+ e.getMessage());
+            }
+        } catch (e: Exception) {
+            Snackbar.make(defaultSimSlotRadioGroup.rootView, "Error: ${e.message}", Snackbar.LENGTH_LONG).show()
+            Log.e(TAG, "SIM_SLOT_ERROR ${e.message}")
         }
     }
-    
-    /**
-     * Extracts error message from API response, trying multiple sources:
-     * 1. Error message from response body (error field)
-     * 2. Response message from HTTP headers
-     * 3. Generic error with status code as fallback
-     */
-    private String extractErrorMessage(Response<?> response) {
-        // Try to parse error from response body
+
+    private fun extractErrorMessage(response: Response<*>): String {
         try {
-            ResponseBody errorBody = response.errorBody();
+            val errorBody: ResponseBody? = response.errorBody()
             if (errorBody != null) {
-                String errorBodyString = errorBody.string();
-                if (errorBodyString != null && !errorBodyString.isEmpty()) {
+                val errorBodyString = errorBody.string()
+                if (errorBodyString.isNotEmpty()) {
                     try {
-                        Gson gson = new Gson();
-                        RegisterDeviceResponseDTO errorResponse = gson.fromJson(errorBodyString, RegisterDeviceResponseDTO.class);
-                        if (errorResponse != null && errorResponse.error != null && !errorResponse.error.isEmpty()) {
-                            return errorResponse.error;
+                        val errorResponse = Gson().fromJson(
+                            errorBodyString,
+                            RegisterDeviceResponseDTO::class.java
+                        )
+                        if (!errorResponse?.error.isNullOrEmpty()) {
+                            return errorResponse.error.orEmpty()
                         }
-                    } catch (Exception e) {
-                        // If JSON parsing fails, try to extract message from raw string
-                        Log.d(TAG, "Could not parse error response as JSON: " + errorBodyString);
+                    } catch (e: Exception) {
+                        Log.d(TAG, "Could not parse error response as JSON: $errorBodyString")
                     }
                 }
             }
-        } catch (IOException e) {
-            Log.d(TAG, "Could not read error body: " + e.getMessage());
+        } catch (e: IOException) {
+            Log.d(TAG, "Could not read error body: ${e.message}")
         }
-        
-        // Fall back to response message
-        if (response.message() != null && !response.message().isEmpty()) {
-            return response.message();
+
+        if (response.message().isNotEmpty()) {
+            return response.message()
         }
-        
-        // Final fallback to generic error with status code
-        return "An error occurred :( " + response.code();
-    }
-    
-    /**
-     * Apply the custom radio button style to a programmatically created radio button
-     */
-    private void applyRadioButtonStyle(RadioButton radioButton) {
-        // Set text color using the color state list for proper dark/light mode handling
-        setRadioButtonTextColor(radioButton);
-        
-        // Set button tint for the radio circle
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                radioButton.setButtonTintList(getResources().getColorStateList(R.color.radio_button_tint, getTheme()));
-            } else {
-                radioButton.setButtonTintList(getResources().getColorStateList(R.color.radio_button_tint));
-            }
-        }
-        
-        // Add proper padding for better touch experience
-        radioButton.setPadding(
-            radioButton.getPaddingLeft() + 8,
-            radioButton.getPaddingTop() + 12,
-            radioButton.getPaddingRight(),
-            radioButton.getPaddingBottom() + 12
-        );
-    }
-    
-    /**
-     * Helper method to set radio button text color in a backward-compatible way
-     */
-    private void setRadioButtonTextColor(RadioButton radioButton) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            radioButton.setTextColor(getResources().getColorStateList(R.color.radio_button_text_color, getTheme()));
-        } else {
-            radioButton.setTextColor(getResources().getColorStateList(R.color.radio_button_text_color));
-        }
+
+        return "An error occurred :( ${response.code()}"
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    private fun applyRadioButtonStyle(radioButton: RadioButton) {
+        setRadioButtonTextColor(radioButton)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            radioButton.buttonTintList = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                resources.getColorStateList(R.color.radio_button_tint, theme)
+            } else {
+                @Suppress("DEPRECATION")
+                resources.getColorStateList(R.color.radio_button_tint)
+            }
+        }
+
+        radioButton.setPadding(
+            radioButton.paddingLeft + 8,
+            radioButton.paddingTop + 12,
+            radioButton.paddingRight,
+            radioButton.paddingBottom + 12
+        )
+    }
+
+    private fun setRadioButtonTextColor(radioButton: RadioButton) {
+        radioButton.setTextColor(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                resources.getColorStateList(R.color.radio_button_text_color, theme)
+            } else {
+                @Suppress("DEPRECATION")
+                resources.getColorStateList(R.color.radio_button_text_color)
+            }
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         if (requestCode != PERMISSION_REQUEST_CODE) {
-            return;
+            return
         }
-        boolean allPermissionsGranted = Arrays.stream(permissions).allMatch(permission -> TextBeeUtils.isPermissionGranted(mContext, permission));
+
+        val allPermissionsGranted = permissions.all { permission ->
+            TextBeeUtils.isPermissionGranted(context, permission)
+        }
         if (allPermissionsGranted) {
-            Snackbar.make(findViewById(R.id.grantSMSPermissionBtn), "All Permissions Granted", Snackbar.LENGTH_SHORT).show();
-            grantSMSPermissionBtn.setEnabled(false);
-            grantSMSPermissionBtn.setText("Permission Granted");
-            renderAvailableSimOptions();
+            Snackbar.make(findViewById(R.id.grantSMSPermissionBtn), "All Permissions Granted", Snackbar.LENGTH_SHORT).show()
+            grantSMSPermissionBtn.isEnabled = false
+            grantSMSPermissionBtn.text = "Permission Granted"
+            renderAvailableSimOptions()
         } else {
-            Snackbar.make(findViewById(R.id.grantSMSPermissionBtn), "Please Grant Required Permissions to continue", Snackbar.LENGTH_SHORT).show();
+            Snackbar.make(
+                findViewById(R.id.grantSMSPermissionBtn),
+                "Please Grant Required Permissions to continue",
+                Snackbar.LENGTH_SHORT
+            ).show()
         }
     }
 
-    private void handleRegisterDevice() {
-        String newKey = apiKeyEditText.getText().toString();
-        String deviceIdInput = deviceIdEditText.getText().toString();
-        
-        registerDeviceBtn.setEnabled(false);
-        registerDeviceBtn.setText("Loading...");
-        View view = findViewById(R.id.registerDeviceBtn);
+    private fun handleRegisterDevice() {
+        val newKey = apiKeyEditText.text.toString()
+        val deviceIdInput = deviceIdEditText.text.toString()
+        val view = findViewById<View>(R.id.registerDeviceBtn)
 
-        FirebaseMessaging.getInstance().getToken()
-                .addOnCompleteListener(task -> {
-                    if (!task.isSuccessful()) {
-                        Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show();
-                        registerDeviceBtn.setEnabled(true);
-                        registerDeviceBtn.setText("Update");
-                        return;
-                    }
-                    String token = task.getResult();
-                    fcmTokenEditText.setText(token);
+        registerDeviceBtn.isEnabled = false
+        registerDeviceBtn.text = "Loading..."
 
-                    RegisterDeviceInputDTO registerDeviceInput = new RegisterDeviceInputDTO();
-                    registerDeviceInput.setEnabled(true);
-                    registerDeviceInput.setFcmToken(token);
-                    registerDeviceInput.setBrand(Build.BRAND);
-                    registerDeviceInput.setManufacturer(Build.MANUFACTURER);
-                    registerDeviceInput.setModel(Build.MODEL);
-                    registerDeviceInput.setBuildId(Build.ID);
-                    registerDeviceInput.setOs(Build.VERSION.BASE_OS);
-                    registerDeviceInput.setAppVersionCode(BuildConfig.VERSION_CODE);
-                    registerDeviceInput.setAppVersionName(BuildConfig.VERSION_NAME);
-                    
-                    // Get device name from input field or default to "brand model"
-                    String deviceName = deviceNameEditText.getText().toString().trim();
-                    if (deviceName.isEmpty()) {
-                        deviceName = Build.BRAND + " " + Build.MODEL;
-                    }
-                    registerDeviceInput.setName(deviceName);
-                    
-                    // Collect SIM information
-                    SimInfoCollectionDTO simInfoCollection = new SimInfoCollectionDTO();
-                    simInfoCollection.setLastUpdated(System.currentTimeMillis());
-                    simInfoCollection.setSims(TextBeeUtils.collectSimInfo(mContext));
-                    registerDeviceInput.setSimInfo(simInfoCollection);
-                    
-                    // If the user provided a device ID, use it for updating instead of creating new
-                    if (!deviceIdInput.isEmpty()) {
-                        Log.d(TAG, "Updating device with deviceId: "+ deviceIdInput);
-                        Call<RegisterDeviceResponseDTO> apiCall = ApiManager.getApiService().updateDevice(deviceIdInput, newKey, registerDeviceInput);
-                        apiCall.enqueue(new Callback<RegisterDeviceResponseDTO>() {
-                            @Override
-                            public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
-                                Log.d(TAG, response.toString());
-                                if (!response.isSuccessful()) {
-                                    Snackbar.make(view, extractErrorMessage(response), Snackbar.LENGTH_LONG).show();
-                                    registerDeviceBtn.setEnabled(true);
-                                    registerDeviceBtn.setText("Update");
-                                    return;
-                                }
-                                SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_API_KEY_KEY, newKey);
-                                Snackbar.make(view, "Device Updated Successfully :)", Snackbar.LENGTH_LONG).show();
-                                
-                                // Update deviceId from response if available
-                                if (response.body() != null && response.body().data != null && response.body().data.get("_id") != null) {
-                                    deviceId = response.body().data.get("_id").toString();
-                                    deviceIdTxt.setText(deviceId);
-                                    deviceIdEditText.setText(deviceId);
-                                    SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_ID_KEY, deviceId);
-                                    SharedPreferenceHelper.setSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY, registerDeviceInput.isEnabled());
-                                    gatewaySwitch.setChecked(registerDeviceInput.isEnabled());
-                                    
-                                    // Sync heartbeatIntervalMinutes from server response
-                                    if (response.body().data.get("heartbeatIntervalMinutes") != null) {
-                                        Object intervalObj = response.body().data.get("heartbeatIntervalMinutes");
-                                        if (intervalObj instanceof Number) {
-                                            int intervalMinutes = ((Number) intervalObj).intValue();
-                                            SharedPreferenceHelper.setSharedPreferenceInt(mContext, AppConstants.SHARED_PREFS_HEARTBEAT_INTERVAL_MINUTES_KEY, intervalMinutes);
-                                            Log.d(TAG, "Synced heartbeat interval from server: " + intervalMinutes + " minutes");
-                                        }
-                                    }
-                                    
-                                    // Sync device name from server response
-                                    if (response.body().data.get("name") != null) {
-                                        String deviceName = response.body().data.get("name").toString();
-                                        SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_NAME_KEY, deviceName);
-                                        deviceNameEditText.setText(deviceName);
-                                        Log.d(TAG, "Synced device name from server: " + deviceName);
-                                    }
-                                    
-                                    // Schedule heartbeat if device is enabled
-                                    if (registerDeviceInput.isEnabled()) {
-                                        HeartbeatManager.scheduleHeartbeat(mContext);
-                                    }
-                                }
-                                
-                                // Update stored version information
-                                VersionTracker.updateStoredVersion(mContext);
-                                
-                                registerDeviceBtn.setEnabled(true);
-                                registerDeviceBtn.setText("Update");
-                            }
-                            
-                            @Override
-                            public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
-                                Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show();
-                                Log.e(TAG, "API_ERROR "+ t.getMessage());
-                                Log.e(TAG, "API_ERROR "+ t.getLocalizedMessage());
-                                TextBeeUtils.logException(t, "Error registering device");
-                                registerDeviceBtn.setEnabled(true);
-                                registerDeviceBtn.setText("Update");
-                            }
-                        });
-                        return;
-                    }
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show()
+                resetRegisterButton()
+                return@addOnCompleteListener
+            }
 
-                    Call<RegisterDeviceResponseDTO> apiCall = ApiManager.getApiService().registerDevice(newKey, registerDeviceInput);
-                        apiCall.enqueue(new Callback<RegisterDeviceResponseDTO>() {
-                            @Override
-                            public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
-                                Log.d(TAG, response.toString());
-                                if (!response.isSuccessful()) {
-                                    Snackbar.make(view, extractErrorMessage(response), Snackbar.LENGTH_LONG).show();
-                                    registerDeviceBtn.setEnabled(true);
-                                    registerDeviceBtn.setText("Update");
-                                    return;
-                                }
-                                SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_API_KEY_KEY, newKey);
-                                Snackbar.make(view, "Device Registration Successful :)", Snackbar.LENGTH_LONG).show();
-                            
-                            if (response.body() != null && response.body().data != null && response.body().data.get("_id") != null) {
-                                deviceId = response.body().data.get("_id").toString();
-                                deviceIdTxt.setText(deviceId);
-                                deviceIdEditText.setText(deviceId);
-                                SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_ID_KEY, deviceId);
-                                SharedPreferenceHelper.setSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY, registerDeviceInput.isEnabled());
-                                gatewaySwitch.setChecked(registerDeviceInput.isEnabled());
-                                
-                                // Sync heartbeatIntervalMinutes from server response
-                                if (response.body().data.get("heartbeatIntervalMinutes") != null) {
-                                    Object intervalObj = response.body().data.get("heartbeatIntervalMinutes");
-                                    if (intervalObj instanceof Number) {
-                                        int intervalMinutes = ((Number) intervalObj).intValue();
-                                        SharedPreferenceHelper.setSharedPreferenceInt(mContext, AppConstants.SHARED_PREFS_HEARTBEAT_INTERVAL_MINUTES_KEY, intervalMinutes);
-                                        Log.d(TAG, "Synced heartbeat interval from server: " + intervalMinutes + " minutes");
-                                    }
-                                }
-                                
-                                // Sync device name from server response
-                                if (response.body().data.get("name") != null) {
-                                    String deviceName = response.body().data.get("name").toString();
-                                    SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_NAME_KEY, deviceName);
-                                    deviceNameEditText.setText(deviceName);
-                                    Log.d(TAG, "Synced device name from server: " + deviceName);
-                                }
-                                
-                                // Schedule heartbeat if device is enabled
-                                if (registerDeviceInput.isEnabled()) {
-                                    HeartbeatManager.scheduleHeartbeat(mContext);
-                                }
-                            }
-                            
-                            // Update stored version information
-                            VersionTracker.updateStoredVersion(mContext);
-                            
-                            registerDeviceBtn.setEnabled(true);
-                            registerDeviceBtn.setText("Update");
+            val token = task.result.orEmpty()
+            fcmTokenEditText.setText(token)
+            val registerDeviceInput = createDeviceInput(token)
+
+            if (deviceIdInput.isNotEmpty()) {
+                Log.d(TAG, "Updating device with deviceId: $deviceIdInput")
+                updateExistingDeviceFromRegistration(view, deviceIdInput, newKey, registerDeviceInput)
+                return@addOnCompleteListener
+            }
+
+            ApiManager.getApiService()
+                .registerDevice(newKey, registerDeviceInput)
+                .enqueue(object : Callback<RegisterDeviceResponseDTO> {
+                    override fun onResponse(
+                        call: Call<RegisterDeviceResponseDTO>,
+                        response: Response<RegisterDeviceResponseDTO>
+                    ) {
+                        Log.d(TAG, response.toString())
+                        if (!response.isSuccessful) {
+                            Snackbar.make(view, extractErrorMessage(response), Snackbar.LENGTH_LONG).show()
+                            resetRegisterButton()
+                            return
                         }
-                        @Override
-                        public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
-                            Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show();
-                            Log.e(TAG, "API_ERROR "+ t.getMessage());
-                            Log.e(TAG, "API_ERROR "+ t.getLocalizedMessage());
-                            TextBeeUtils.logException(t, "Error registering device");
-                            registerDeviceBtn.setEnabled(true);
-                            registerDeviceBtn.setText("Update");
-                        }
-                    });
-                });
+
+                        SharedPreferenceHelper.setSharedPreferenceString(
+                            context,
+                            AppConstants.SHARED_PREFS_API_KEY_KEY,
+                            newKey
+                        )
+                        Snackbar.make(view, "Device Registration Successful :)", Snackbar.LENGTH_LONG).show()
+                        syncDeviceFromResponse(response, registerDeviceInput)
+                        VersionTracker.updateStoredVersion(context)
+                        resetRegisterButton()
+                    }
+
+                    override fun onFailure(call: Call<RegisterDeviceResponseDTO>, t: Throwable) {
+                        handleDeviceRequestFailure(view, t, "Error registering device")
+                    }
+                })
+        }
     }
 
-    private void handleUpdateDevice() {
-        String apiKey = apiKeyEditText.getText().toString();
-        String deviceIdInput = deviceIdEditText.getText().toString();
-        String deviceIdToUse = !deviceIdInput.isEmpty() ? deviceIdInput : deviceId;
-        
-        registerDeviceBtn.setEnabled(false);
-        registerDeviceBtn.setText("Loading...");
-        View view = findViewById(R.id.registerDeviceBtn);
-
-        FirebaseMessaging.getInstance().getToken()
-                .addOnCompleteListener(task -> {
-                    if (!task.isSuccessful()) {
-                        Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show();
-                        registerDeviceBtn.setEnabled(true);
-                        registerDeviceBtn.setText("Update");
-                        return;
+    private fun updateExistingDeviceFromRegistration(
+        view: View,
+        deviceIdInput: String,
+        apiKey: String,
+        registerDeviceInput: RegisterDeviceInputDTO
+    ) {
+        ApiManager.getApiService()
+            .updateDevice(deviceIdInput, apiKey, registerDeviceInput)
+            .enqueue(object : Callback<RegisterDeviceResponseDTO> {
+                override fun onResponse(
+                    call: Call<RegisterDeviceResponseDTO>,
+                    response: Response<RegisterDeviceResponseDTO>
+                ) {
+                    Log.d(TAG, response.toString())
+                    if (!response.isSuccessful) {
+                        Snackbar.make(view, extractErrorMessage(response), Snackbar.LENGTH_LONG).show()
+                        resetRegisterButton()
+                        return
                     }
-                    String token = task.getResult();
-                    fcmTokenEditText.setText(token);
 
-                    RegisterDeviceInputDTO updateDeviceInput = new RegisterDeviceInputDTO();
-                    updateDeviceInput.setEnabled(true);
-                    updateDeviceInput.setFcmToken(token);
-                    updateDeviceInput.setBrand(Build.BRAND);
-                    updateDeviceInput.setManufacturer(Build.MANUFACTURER);
-                    updateDeviceInput.setModel(Build.MODEL);
-                    updateDeviceInput.setBuildId(Build.ID);
-                    updateDeviceInput.setOs(Build.VERSION.BASE_OS);
-                    updateDeviceInput.setAppVersionCode(BuildConfig.VERSION_CODE);
-                    updateDeviceInput.setAppVersionName(BuildConfig.VERSION_NAME);
+                    SharedPreferenceHelper.setSharedPreferenceString(
+                        context,
+                        AppConstants.SHARED_PREFS_API_KEY_KEY,
+                        apiKey
+                    )
+                    Snackbar.make(view, "Device Updated Successfully :)", Snackbar.LENGTH_LONG).show()
+                    syncDeviceFromResponse(response, registerDeviceInput)
+                    VersionTracker.updateStoredVersion(context)
+                    resetRegisterButton()
+                }
 
-                    // Get device name from input field or default to "brand model"
-                    String deviceName = deviceNameEditText.getText().toString().trim();
-                    if (deviceName.isEmpty()) {
-                        deviceName = Build.BRAND + " " + Build.MODEL;
-                    }
-                    updateDeviceInput.setName(deviceName);
-
-                    // Collect SIM information
-                    SimInfoCollectionDTO simInfoCollection = new SimInfoCollectionDTO();
-                    simInfoCollection.setLastUpdated(System.currentTimeMillis());
-                    simInfoCollection.setSims(TextBeeUtils.collectSimInfo(mContext));
-                    updateDeviceInput.setSimInfo(simInfoCollection);
-
-                    Call<RegisterDeviceResponseDTO> apiCall = ApiManager.getApiService().updateDevice(deviceIdToUse, apiKey, updateDeviceInput);
-                    apiCall.enqueue(new Callback<RegisterDeviceResponseDTO>() {
-                        @Override
-                        public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
-                            Log.d(TAG, response.toString());
-                            if (!response.isSuccessful()) {
-                                Snackbar.make(view, extractErrorMessage(response), Snackbar.LENGTH_LONG).show();
-                                registerDeviceBtn.setEnabled(true);
-                                registerDeviceBtn.setText("Update");
-                                return;
-                            }
-                            SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_API_KEY_KEY, apiKey);
-                            
-                            // Update deviceId from response if available
-                            if (response.body() != null && response.body().data != null && response.body().data.get("_id") != null) {
-                                deviceId = response.body().data.get("_id").toString();
-                                SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_ID_KEY, deviceId);
-                                deviceIdTxt.setText(deviceId);
-                                deviceIdEditText.setText(deviceId);
-                                
-                                // Sync heartbeatIntervalMinutes from server response
-                                if (response.body().data.get("heartbeatIntervalMinutes") != null) {
-                                    Object intervalObj = response.body().data.get("heartbeatIntervalMinutes");
-                                    if (intervalObj instanceof Number) {
-                                        int intervalMinutes = ((Number) intervalObj).intValue();
-                                        SharedPreferenceHelper.setSharedPreferenceInt(mContext, AppConstants.SHARED_PREFS_HEARTBEAT_INTERVAL_MINUTES_KEY, intervalMinutes);
-                                        Log.d(TAG, "Synced heartbeat interval from server: " + intervalMinutes + " minutes");
-                                    }
-                                }
-                                
-                                // Sync device name from server response
-                                if (response.body().data.get("name") != null) {
-                                    String deviceName = response.body().data.get("name").toString();
-                                    SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_NAME_KEY, deviceName);
-                                    deviceNameEditText.setText(deviceName);
-                                    Log.d(TAG, "Synced device name from server: " + deviceName);
-                                }
-                                
-                                // Schedule heartbeat if device is enabled
-                                if (updateDeviceInput.isEnabled()) {
-                                    HeartbeatManager.scheduleHeartbeat(mContext);
-                                }
-                            }
-                            
-                            // Update stored version information
-                            VersionTracker.updateStoredVersion(mContext);
-                            
-                            Snackbar.make(view, "Device Updated Successfully :)", Snackbar.LENGTH_LONG).show();
-                            registerDeviceBtn.setEnabled(true);
-                            registerDeviceBtn.setText("Update");
-                        }
-
-                        @Override
-                        public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
-                            Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show();
-                            Log.e(TAG, "API_ERROR "+ t.getMessage());
-                            Log.e(TAG, "API_ERROR "+ t.getLocalizedMessage());
-                            TextBeeUtils.logException(t, "Error updating device");
-                            registerDeviceBtn.setEnabled(true);
-                            registerDeviceBtn.setText("Update");
-                        }
-                    });
-                });
+                override fun onFailure(call: Call<RegisterDeviceResponseDTO>, t: Throwable) {
+                    handleDeviceRequestFailure(view, t, "Error registering device")
+                }
+            })
     }
 
-    private void handleRequestPermissions(View view) {
-        boolean allPermissionsGranted = Arrays.stream(AppConstants.requiredPermissions).allMatch(permission -> TextBeeUtils.isPermissionGranted(mContext, permission));
+    private fun handleUpdateDevice() {
+        val apiKey = apiKeyEditText.text.toString()
+        val deviceIdInput = deviceIdEditText.text.toString()
+        val deviceIdToUse = if (deviceIdInput.isNotEmpty()) deviceIdInput else deviceId
+        val view = findViewById<View>(R.id.registerDeviceBtn)
+
+        registerDeviceBtn.isEnabled = false
+        registerDeviceBtn.text = "Loading..."
+
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show()
+                resetRegisterButton()
+                return@addOnCompleteListener
+            }
+
+            val token = task.result.orEmpty()
+            fcmTokenEditText.setText(token)
+            val updateDeviceInput = createDeviceInput(token)
+
+            ApiManager.getApiService()
+                .updateDevice(deviceIdToUse, apiKey, updateDeviceInput)
+                .enqueue(object : Callback<RegisterDeviceResponseDTO> {
+                    override fun onResponse(
+                        call: Call<RegisterDeviceResponseDTO>,
+                        response: Response<RegisterDeviceResponseDTO>
+                    ) {
+                        Log.d(TAG, response.toString())
+                        if (!response.isSuccessful) {
+                            Snackbar.make(view, extractErrorMessage(response), Snackbar.LENGTH_LONG).show()
+                            resetRegisterButton()
+                            return
+                        }
+
+                        SharedPreferenceHelper.setSharedPreferenceString(
+                            context,
+                            AppConstants.SHARED_PREFS_API_KEY_KEY,
+                            apiKey
+                        )
+                        syncDeviceFromResponse(response, updateDeviceInput)
+                        VersionTracker.updateStoredVersion(context)
+                        Snackbar.make(view, "Device Updated Successfully :)", Snackbar.LENGTH_LONG).show()
+                        resetRegisterButton()
+                    }
+
+                    override fun onFailure(call: Call<RegisterDeviceResponseDTO>, t: Throwable) {
+                        handleDeviceRequestFailure(view, t, "Error updating device")
+                    }
+                })
+        }
+    }
+
+    private fun createDeviceInput(token: String): RegisterDeviceInputDTO {
+        val deviceName = deviceNameEditText.text.toString().trim()
+            .ifEmpty { "${Build.BRAND} ${Build.MODEL}" }
+        val simInfoCollection = SimInfoCollectionDTO().apply {
+            lastUpdated = System.currentTimeMillis()
+            sims = TextBeeUtils.collectSimInfo(context)
+        }
+
+        return RegisterDeviceInputDTO().apply {
+            enabled = true
+            fcmToken = token
+            brand = Build.BRAND
+            manufacturer = Build.MANUFACTURER
+            model = Build.MODEL
+            buildId = Build.ID
+            os = Build.VERSION.BASE_OS
+            appVersionCode = BuildConfig.VERSION_CODE
+            appVersionName = BuildConfig.VERSION_NAME
+            name = deviceName
+            simInfo = simInfoCollection
+        }
+    }
+
+    private fun syncDeviceFromResponse(
+        response: Response<RegisterDeviceResponseDTO>,
+        deviceInput: RegisterDeviceInputDTO
+    ) {
+        val data = response.body()?.data ?: return
+        val responseDeviceId = data["_id"]?.toString() ?: return
+
+        deviceId = responseDeviceId
+        deviceIdTxt.text = responseDeviceId
+        deviceIdEditText.setText(responseDeviceId)
+        SharedPreferenceHelper.setSharedPreferenceString(
+            context,
+            AppConstants.SHARED_PREFS_DEVICE_ID_KEY,
+            responseDeviceId
+        )
+        SharedPreferenceHelper.setSharedPreferenceBoolean(
+            context,
+            AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY,
+            deviceInput.isEnabled() == true
+        )
+        gatewaySwitch.isChecked = deviceInput.isEnabled() == true
+
+        (data["heartbeatIntervalMinutes"] as? Number)?.let { intervalObj ->
+            val intervalMinutes = intervalObj.toInt()
+            SharedPreferenceHelper.setSharedPreferenceInt(
+                context,
+                AppConstants.SHARED_PREFS_HEARTBEAT_INTERVAL_MINUTES_KEY,
+                intervalMinutes
+            )
+            Log.d(TAG, "Synced heartbeat interval from server: $intervalMinutes minutes")
+        }
+
+        data["name"]?.toString()?.let { deviceName ->
+            SharedPreferenceHelper.setSharedPreferenceString(
+                context,
+                AppConstants.SHARED_PREFS_DEVICE_NAME_KEY,
+                deviceName
+            )
+            deviceNameEditText.setText(deviceName)
+            Log.d(TAG, "Synced device name from server: $deviceName")
+        }
+
+        if (deviceInput.isEnabled() == true) {
+            HeartbeatManager.scheduleHeartbeat(context)
+        }
+    }
+
+    private fun handleDeviceRequestFailure(view: View, t: Throwable, logMessage: String) {
+        Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show()
+        Log.e(TAG, "API_ERROR ${t.message}")
+        Log.e(TAG, "API_ERROR ${t.localizedMessage}")
+        TextBeeUtils.logException(t, logMessage)
+        resetRegisterButton()
+    }
+
+    private fun resetRegisterButton() {
+        registerDeviceBtn.isEnabled = true
+        registerDeviceBtn.text = "Update"
+    }
+
+    private fun handleRequestPermissions(view: View) {
+        val allPermissionsGranted = AppConstants.requiredPermissions.all { permission ->
+            TextBeeUtils.isPermissionGranted(context, permission)
+        }
         if (allPermissionsGranted) {
-            Snackbar.make(view, "Already got permissions", Snackbar.LENGTH_SHORT).show();
-            return;
+            Snackbar.make(view, "Already got permissions", Snackbar.LENGTH_SHORT).show()
+            return
         }
-        String[] permissionsToRequest = Arrays.stream(AppConstants.requiredPermissions).filter(permission -> !TextBeeUtils.isPermissionGranted(mContext, permission)).toArray(String[]::new);
-        Snackbar.make(view, "Please Grant Required Permissions to continue", Snackbar.LENGTH_SHORT).show();
-        ActivityCompat.requestPermissions(this, permissionsToRequest, PERMISSION_REQUEST_CODE);
+
+        val permissionsToRequest = AppConstants.requiredPermissions
+            .filter { permission -> !TextBeeUtils.isPermissionGranted(context, permission) }
+            .toTypedArray()
+        Snackbar.make(view, "Please Grant Required Permissions to continue", Snackbar.LENGTH_SHORT).show()
+        ActivityCompat.requestPermissions(this, permissionsToRequest, PERMISSION_REQUEST_CODE)
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == SCAN_QR_REQUEST_CODE) {
-            IntentResult intentResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-            if (intentResult == null || intentResult.getContents() == null) {
-                Toast.makeText(getBaseContext(), "Canceled", Toast.LENGTH_SHORT).show();
-                return;
+            val intentResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
+            if (intentResult == null || intentResult.contents == null) {
+                Toast.makeText(baseContext, "Canceled", Toast.LENGTH_SHORT).show()
+                return
             }
-            String scannedQR = intentResult.getContents();
-            apiKeyEditText.setText(scannedQR);
-            if(deviceIdEditText.getText().toString().isEmpty()) {
-                handleRegisterDevice();
+
+            apiKeyEditText.setText(intentResult.contents)
+            if (deviceIdEditText.text.toString().isEmpty()) {
+                handleRegisterDevice()
             } else {
-                handleUpdateDevice();
+                handleUpdateDevice()
             }
         }
     }
 
+    companion object {
+        private const val SCAN_QR_REQUEST_CODE = 49374
+        private const val PERMISSION_REQUEST_CODE = 0
+        private const val SMS_DELAY_SAVE_DEBOUNCE_MS = 3000L
+        private const val DEFAULT_SIM_RADIO_ID = 123456
+        private const val TAG = "MainActivity"
+    }
 }

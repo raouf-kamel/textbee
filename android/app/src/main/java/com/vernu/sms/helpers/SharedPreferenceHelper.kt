@@ -1,54 +1,54 @@
-package com.vernu.sms.helpers;
+package com.vernu.sms.helpers
 
-import android.content.Context;
-import android.content.SharedPreferences;
+import android.content.Context
 
-public class SharedPreferenceHelper {
-    private final static String PREF_FILE = "PREF";
+object SharedPreferenceHelper {
+    private const val PREF_FILE = "PREF"
 
-
-    public static void setSharedPreferenceString(Context context, String key, String value) {
-        SharedPreferences settings = context.getSharedPreferences(PREF_FILE, 0);
-        SharedPreferences.Editor editor = settings.edit();
-        editor.putString(key, value);
-        editor.apply();
+    @JvmStatic
+    fun setSharedPreferenceString(context: Context, key: String, value: String?) {
+        context.getSharedPreferences(PREF_FILE, 0)
+            .edit()
+            .putString(key, value)
+            .apply()
     }
 
-    public static void setSharedPreferenceInt(Context context, String key, int value) {
-        SharedPreferences settings = context.getSharedPreferences(PREF_FILE, 0);
-        SharedPreferences.Editor editor = settings.edit();
-        editor.putInt(key, value);
-        editor.apply();
+    @JvmStatic
+    fun setSharedPreferenceInt(context: Context, key: String, value: Int) {
+        context.getSharedPreferences(PREF_FILE, 0)
+            .edit()
+            .putInt(key, value)
+            .apply()
     }
 
-    public static void setSharedPreferenceBoolean(Context context, String key, boolean value) {
-        SharedPreferences settings = context.getSharedPreferences(PREF_FILE, 0);
-        SharedPreferences.Editor editor = settings.edit();
-        editor.putBoolean(key, value);
-        editor.apply();
+    @JvmStatic
+    fun setSharedPreferenceBoolean(context: Context, key: String, value: Boolean) {
+        context.getSharedPreferences(PREF_FILE, 0)
+            .edit()
+            .putBoolean(key, value)
+            .apply()
     }
 
-    public static String getSharedPreferenceString(Context context, String key, String defValue) {
-        SharedPreferences settings = context.getSharedPreferences(PREF_FILE, 0);
-        return settings.getString(key, defValue);
+    @JvmStatic
+    fun getSharedPreferenceString(context: Context, key: String, defValue: String?): String? {
+        return context.getSharedPreferences(PREF_FILE, 0).getString(key, defValue)
     }
 
-
-    public static int getSharedPreferenceInt(Context context, String key, int defValue) {
-        SharedPreferences settings = context.getSharedPreferences(PREF_FILE, 0);
-        return settings.getInt(key, defValue);
+    @JvmStatic
+    fun getSharedPreferenceInt(context: Context, key: String, defValue: Int): Int {
+        return context.getSharedPreferences(PREF_FILE, 0).getInt(key, defValue)
     }
 
-
-    public static boolean getSharedPreferenceBoolean(Context context, String key, boolean defValue) {
-        SharedPreferences settings = context.getSharedPreferences(PREF_FILE, 0);
-        return settings.getBoolean(key, defValue);
+    @JvmStatic
+    fun getSharedPreferenceBoolean(context: Context, key: String, defValue: Boolean): Boolean {
+        return context.getSharedPreferences(PREF_FILE, 0).getBoolean(key, defValue)
     }
 
-    public static void clearSharedPreference(Context context, String key) {
-        SharedPreferences settings = context.getSharedPreferences(PREF_FILE, 0);
-        SharedPreferences.Editor editor = settings.edit();
-        editor.remove(key);
-        editor.apply();
+    @JvmStatic
+    fun clearSharedPreference(context: Context, key: String) {
+        context.getSharedPreferences(PREF_FILE, 0)
+            .edit()
+            .remove(key)
+            .apply()
     }
 }

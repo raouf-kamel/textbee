@@ -1,142 +1,103 @@
-package com.vernu.sms.helpers;
+package com.vernu.sms.helpers
 
-import android.content.Context;
-import android.util.Log;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import com.vernu.sms.AppConstants;
-import com.vernu.sms.models.SMSFilterRule;
+import android.content.Context
+import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.vernu.sms.AppConstants
+import com.vernu.sms.models.SMSFilterRule
 
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
+object SMSFilterHelper {
+    private const val TAG = "SMSFilterHelper"
 
-public class SMSFilterHelper {
-    private static final String TAG = "SMSFilterHelper";
-
-    public enum FilterMode {
+    enum class FilterMode {
         ALLOW_LIST,
-        BLOCK_LIST
+        BLOCK_LIST,
     }
 
-    public static class FilterConfig {
-        private boolean enabled = false;
-        private FilterMode mode = FilterMode.BLOCK_LIST; // Default to block list
-        private List<SMSFilterRule> rules = new ArrayList<>();
+    class FilterConfig {
+        private var enabled = false
+        private var mode = FilterMode.BLOCK_LIST
+        private var rules: MutableList<SMSFilterRule> = ArrayList()
 
-        public FilterConfig() {
+        fun isEnabled(): Boolean = enabled
+
+        fun setEnabled(enabled: Boolean) {
+            this.enabled = enabled
         }
 
-        public boolean isEnabled() {
-            return enabled;
+        fun getMode(): FilterMode = mode
+
+        fun setMode(mode: FilterMode?) {
+            this.mode = mode ?: FilterMode.BLOCK_LIST
         }
 
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
+        fun getRules(): MutableList<SMSFilterRule> = rules
 
-        public FilterMode getMode() {
-            return mode;
-        }
-
-        public void setMode(FilterMode mode) {
-            this.mode = mode;
-        }
-
-        public List<SMSFilterRule> getRules() {
-            return rules;
-        }
-
-        public void setRules(List<SMSFilterRule> rules) {
-            this.rules = rules != null ? rules : new ArrayList<>();
+        fun setRules(rules: List<SMSFilterRule>?) {
+            this.rules = rules?.toMutableList() ?: ArrayList()
         }
     }
 
-    /**
-     * Load filter configuration from SharedPreferences
-     */
-    public static FilterConfig loadFilterConfig(Context context) {
-        String json = SharedPreferenceHelper.getSharedPreferenceString(
+    @JvmStatic
+    fun loadFilterConfig(context: Context): FilterConfig {
+        val json = SharedPreferenceHelper.getSharedPreferenceString(
             context,
             AppConstants.SHARED_PREFS_SMS_FILTER_CONFIG_KEY,
-            null
-        );
+            null,
+        )
 
-        if (json == null || json.isEmpty()) {
-            return new FilterConfig();
+        if (json.isNullOrEmpty()) {
+            return FilterConfig()
         }
 
-        try {
-            Gson gson = new Gson();
-            Type type = new TypeToken<FilterConfig>() {}.getType();
-            FilterConfig config = gson.fromJson(json, type);
-            return config != null ? config : new FilterConfig();
-        } catch (Exception e) {
-            Log.e(TAG, "Error loading filter config: " + e.getMessage());
-            return new FilterConfig();
+        return try {
+            val type = object : TypeToken<FilterConfig>() {}.type
+            Gson().fromJson<FilterConfig>(json, type) ?: FilterConfig()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading filter config: ${e.message}")
+            FilterConfig()
         }
     }
 
-    /**
-     * Save filter configuration to SharedPreferences
-     */
-    public static void saveFilterConfig(Context context, FilterConfig config) {
+    @JvmStatic
+    fun saveFilterConfig(context: Context, config: FilterConfig) {
         try {
-            Gson gson = new Gson();
-            String json = gson.toJson(config);
+            val json = Gson().toJson(config)
             SharedPreferenceHelper.setSharedPreferenceString(
                 context,
                 AppConstants.SHARED_PREFS_SMS_FILTER_CONFIG_KEY,
-                json
-            );
-        } catch (Exception e) {
-            Log.e(TAG, "Error saving filter config: " + e.getMessage());
+                json,
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving filter config: ${e.message}")
         }
     }
 
-    /**
-     * Check if an SMS should be processed based on filter configuration
-     * @param sender The sender phone number
-     * @param message The message content
-     * @param context Application context
-     * @return true if SMS should be processed, false if it should be filtered out
-     */
-    public static boolean shouldProcessSMS(String sender, String message, Context context) {
-        FilterConfig config = loadFilterConfig(context);
+    @JvmStatic
+    fun shouldProcessSMS(sender: String?, message: String?, context: Context): Boolean {
+        val config = loadFilterConfig(context)
 
-        // If filter is disabled, process all SMS
         if (!config.isEnabled()) {
-            return true;
+            return true
         }
 
-        // If no rules, process all SMS (empty filter doesn't block anything)
-        if (config.getRules() == null || config.getRules().isEmpty()) {
-            return true;
+        val rules = config.getRules()
+        if (rules.isEmpty()) {
+            return true
         }
 
-        // Check if sender and/or message matches any rule
-        boolean matchesAnyRule = false;
-        for (SMSFilterRule rule : config.getRules()) {
-            if (rule.matches(sender, message)) {
-                matchesAnyRule = true;
-                break;
-            }
-        }
+        val matchesAnyRule = rules.any { rule -> rule.matches(sender, message) }
 
-        // Apply filter mode
-        if (config.getMode() == FilterMode.ALLOW_LIST) {
-            // Only process if matches a rule
-            return matchesAnyRule;
+        return if (config.getMode() == FilterMode.ALLOW_LIST) {
+            matchesAnyRule
         } else {
-            // Block list: process if it does NOT match any rule
-            return !matchesAnyRule;
+            !matchesAnyRule
         }
     }
 
-    /**
-     * Legacy method for backward compatibility - checks sender only
-     */
-    public static boolean shouldProcessSMS(String sender, Context context) {
-        return shouldProcessSMS(sender, null, context);
+    @JvmStatic
+    fun shouldProcessSMS(sender: String?, context: Context): Boolean {
+        return shouldProcessSMS(sender, null, context)
     }
 }

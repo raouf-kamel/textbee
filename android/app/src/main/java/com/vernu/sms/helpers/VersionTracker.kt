@@ -1,111 +1,95 @@
-package com.vernu.sms.helpers;
+package com.vernu.sms.helpers
 
-import android.content.Context;
-import android.util.Log;
+import android.content.Context
+import android.util.Log
+import com.vernu.sms.ApiManager
+import com.vernu.sms.AppConstants
+import com.vernu.sms.BuildConfig
+import com.vernu.sms.dtos.RegisterDeviceInputDTO
+import com.vernu.sms.dtos.RegisterDeviceResponseDTO
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
-import com.vernu.sms.ApiManager;
-import com.vernu.sms.AppConstants;
-import com.vernu.sms.BuildConfig;
-import com.vernu.sms.dtos.RegisterDeviceInputDTO;
-import com.vernu.sms.dtos.RegisterDeviceResponseDTO;
+object VersionTracker {
+    private const val TAG = "VersionTracker"
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+    @JvmStatic
+    fun hasVersionChanged(context: Context): Boolean {
+        val lastVersionCode = SharedPreferenceHelper.getSharedPreferenceInt(
+            context,
+            AppConstants.SHARED_PREFS_LAST_VERSION_CODE_KEY,
+            -1,
+        )
 
-public class VersionTracker {
-    private static final String TAG = "VersionTracker";
+        val lastVersionName = SharedPreferenceHelper.getSharedPreferenceString(
+            context,
+            AppConstants.SHARED_PREFS_LAST_VERSION_NAME_KEY,
+            "",
+        ).orEmpty()
 
-    /**
-     * Checks if the app version has changed since the last time it was run
-     * @param context Application context
-     * @return true if version has changed, false otherwise
-     */
-    public static boolean hasVersionChanged(Context context) {
-        int lastVersionCode = SharedPreferenceHelper.getSharedPreferenceInt(
-                context, 
-                AppConstants.SHARED_PREFS_LAST_VERSION_CODE_KEY, 
-                -1
-        );
-        
-        String lastVersionName = SharedPreferenceHelper.getSharedPreferenceString(
-                context,
-                AppConstants.SHARED_PREFS_LAST_VERSION_NAME_KEY,
-                ""
-        );
-        
-        int currentVersionCode = BuildConfig.VERSION_CODE;
-        String currentVersionName = BuildConfig.VERSION_NAME;
-        
-        // First app launch or version changed
-        return lastVersionCode == -1 || 
-               lastVersionCode != currentVersionCode || 
-               !lastVersionName.equals(currentVersionName);
+        return lastVersionCode == -1 ||
+            lastVersionCode != BuildConfig.VERSION_CODE ||
+            lastVersionName != BuildConfig.VERSION_NAME
     }
-    
-    /**
-     * Updates the stored version information with current version
-     * @param context Application context
-     */
-    public static void updateStoredVersion(Context context) {
+
+    @JvmStatic
+    fun updateStoredVersion(context: Context) {
         SharedPreferenceHelper.setSharedPreferenceInt(
-                context,
-                AppConstants.SHARED_PREFS_LAST_VERSION_CODE_KEY,
-                BuildConfig.VERSION_CODE
-        );
-        
+            context,
+            AppConstants.SHARED_PREFS_LAST_VERSION_CODE_KEY,
+            BuildConfig.VERSION_CODE,
+        )
+
         SharedPreferenceHelper.setSharedPreferenceString(
-                context,
-                AppConstants.SHARED_PREFS_LAST_VERSION_NAME_KEY,
-                BuildConfig.VERSION_NAME
-        );
+            context,
+            AppConstants.SHARED_PREFS_LAST_VERSION_NAME_KEY,
+            BuildConfig.VERSION_NAME,
+        )
     }
-    
-    /**
-     * Reports current app version to the server
-     * @param context Application context
-     */
-    public static void reportVersionToServer(Context context) {
-        String deviceId = SharedPreferenceHelper.getSharedPreferenceString(
-                context, 
-                AppConstants.SHARED_PREFS_DEVICE_ID_KEY, 
-                ""
-        );
-        
-        String apiKey = SharedPreferenceHelper.getSharedPreferenceString(
-                context,
-                AppConstants.SHARED_PREFS_API_KEY_KEY,
-                ""
-        );
-        
-        // If device is not registered or no API key, can't report version
+
+    @JvmStatic
+    fun reportVersionToServer(context: Context) {
+        val deviceId = SharedPreferenceHelper.getSharedPreferenceString(
+            context,
+            AppConstants.SHARED_PREFS_DEVICE_ID_KEY,
+            "",
+        ).orEmpty()
+
+        val apiKey = SharedPreferenceHelper.getSharedPreferenceString(
+            context,
+            AppConstants.SHARED_PREFS_API_KEY_KEY,
+            "",
+        ).orEmpty()
+
         if (deviceId.isEmpty() || apiKey.isEmpty()) {
-            Log.d(TAG, "Can't report version: device not registered or no API key");
-            return;
+            Log.d(TAG, "Can't report version: device not registered or no API key")
+            return
         }
-        
-        RegisterDeviceInputDTO updateInput = new RegisterDeviceInputDTO();
-        updateInput.setAppVersionCode(BuildConfig.VERSION_CODE);
-        updateInput.setAppVersionName(BuildConfig.VERSION_NAME);
-        
-        Call<RegisterDeviceResponseDTO> apiCall = ApiManager.getApiService()
-                .updateDevice(deviceId, apiKey, updateInput);
-        
-        apiCall.enqueue(new Callback<RegisterDeviceResponseDTO>() {
-            @Override
-            public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
-                if (response.isSuccessful()) {
-                    Log.d(TAG, "Version update reported successfully");
-                    updateStoredVersion(context);
-                } else {
-                    Log.e(TAG, "Failed to report version update: " + response.code());
+
+        val updateInput = RegisterDeviceInputDTO().apply {
+            appVersionCode = BuildConfig.VERSION_CODE
+            appVersionName = BuildConfig.VERSION_NAME
+        }
+
+        ApiManager.getApiService()
+            .updateDevice(deviceId, apiKey, updateInput)
+            .enqueue(object : Callback<RegisterDeviceResponseDTO> {
+                override fun onResponse(
+                    call: Call<RegisterDeviceResponseDTO>,
+                    response: Response<RegisterDeviceResponseDTO>,
+                ) {
+                    if (response.isSuccessful) {
+                        Log.d(TAG, "Version update reported successfully")
+                        updateStoredVersion(context)
+                    } else {
+                        Log.e(TAG, "Failed to report version update: ${response.code()}")
+                    }
                 }
-            }
-            
-            @Override
-            public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
-                Log.e(TAG, "Error reporting version update: " + t.getMessage());
-            }
-        });
+
+                override fun onFailure(call: Call<RegisterDeviceResponseDTO>, t: Throwable) {
+                    Log.e(TAG, "Error reporting version update: ${t.message}")
+                }
+            })
     }
-} 
+}

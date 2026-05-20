@@ -1,204 +1,203 @@
-package com.vernu.sms.services;
+package com.vernu.sms.services
 
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.Context;
-import android.content.Intent;
-import android.media.RingtoneManager;
-import android.net.Uri;
-import android.os.Build;
-import android.util.Log;
-import androidx.core.app.NotificationCompat;
-import com.google.firebase.messaging.FirebaseMessagingService;
-import com.google.firebase.messaging.RemoteMessage;
-import com.google.gson.Gson;
-import com.vernu.sms.AppConstants;
-import com.vernu.sms.R;
-import com.vernu.sms.activities.MainActivity;
-import com.vernu.sms.helpers.SharedPreferenceHelper;
-import com.vernu.sms.helpers.HeartbeatHelper;
-import com.vernu.sms.helpers.HeartbeatManager;
-import com.vernu.sms.models.SMSPayload;
-import com.vernu.sms.workers.SmsSendWorker;
-import com.vernu.sms.dtos.RegisterDeviceInputDTO;
-import com.vernu.sms.dtos.RegisterDeviceResponseDTO;
-import com.vernu.sms.ApiManager;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.media.RingtoneManager
+import android.os.Build
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+import com.google.gson.Gson
+import com.vernu.sms.ApiManager
+import com.vernu.sms.AppConstants
+import com.vernu.sms.R
+import com.vernu.sms.activities.MainActivity
+import com.vernu.sms.dtos.RegisterDeviceInputDTO
+import com.vernu.sms.dtos.RegisterDeviceResponseDTO
+import com.vernu.sms.helpers.HeartbeatHelper
+import com.vernu.sms.helpers.HeartbeatManager
+import com.vernu.sms.helpers.SharedPreferenceHelper
+import com.vernu.sms.models.SMSPayload
+import com.vernu.sms.workers.SmsSendWorker
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
-public class FCMService extends FirebaseMessagingService {
-
-    private static final String TAG = "FirebaseMessagingService";
-    private static final String DEFAULT_NOTIFICATION_CHANNEL_ID = "N1";
-
-    @Override
-    public void onMessageReceived(RemoteMessage remoteMessage) {
-        Log.d(TAG, remoteMessage.getData().toString());
+class FCMService : FirebaseMessagingService() {
+    override fun onMessageReceived(remoteMessage: RemoteMessage) {
+        Log.d(TAG, remoteMessage.data.toString())
 
         try {
-            // Check message type first
-            String messageType = remoteMessage.getData().get("type");
-            
-            if ("heartbeat_check".equals(messageType)) {
-                // Handle heartbeat check request from backend
-                handleHeartbeatCheck();
-                return;
+            val messageType = remoteMessage.data["type"]
+
+            if (messageType == "heartbeat_check") {
+                handleHeartbeatCheck()
+                return
             }
 
-            // Parse SMS payload data (legacy handling)
-            Gson gson = new Gson();
-            SMSPayload smsPayload = gson.fromJson(remoteMessage.getData().get("smsData"), SMSPayload.class);
+            val smsPayload = Gson().fromJson(remoteMessage.data["smsData"], SMSPayload::class.java)
 
-            // Check if message contains a data payload
-            if (remoteMessage.getData().size() > 0) {
-                sendSMS(smsPayload);
+            if (remoteMessage.data.isNotEmpty()) {
+                sendSMS(smsPayload)
             }
 
-            // Handle any notification message
-            if (remoteMessage.getNotification() != null) {
-                // sendNotification("notif msg", "msg body");
+            if (remoteMessage.notification != null) {
+                // Notification display is intentionally disabled for SMS dispatch payloads.
             }
-        } catch (Exception e) {
-            Log.e(TAG, "Error processing FCM message: " + e.getMessage());
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing FCM message: ${e.message}")
         }
     }
 
-    /**
-     * Handle heartbeat check request from backend
-     */
-    private void handleHeartbeatCheck() {
-        Log.d(TAG, "Received heartbeat check request from backend");
-        
-        // Check if device is eligible for heartbeat
+    private fun handleHeartbeatCheck() {
+        Log.d(TAG, "Received heartbeat check request from backend")
+
         if (!HeartbeatHelper.isDeviceEligibleForHeartbeat(this)) {
-            Log.d(TAG, "Device not eligible for heartbeat, skipping heartbeat check");
-            return;
+            Log.d(TAG, "Device not eligible for heartbeat, skipping heartbeat check")
+            return
         }
 
-        // Get device ID and API key
-        String deviceId = SharedPreferenceHelper.getSharedPreferenceString(
+        val deviceId = SharedPreferenceHelper.getSharedPreferenceString(
             this,
             AppConstants.SHARED_PREFS_DEVICE_ID_KEY,
             ""
-        );
-
-        String apiKey = SharedPreferenceHelper.getSharedPreferenceString(
+        ).orEmpty()
+        val apiKey = SharedPreferenceHelper.getSharedPreferenceString(
             this,
             AppConstants.SHARED_PREFS_API_KEY_KEY,
             ""
-        );
+        ).orEmpty()
 
-        // Send heartbeat using shared helper
-        boolean success = HeartbeatHelper.sendHeartbeat(this, deviceId, apiKey);
+        val success = HeartbeatHelper.sendHeartbeat(this, deviceId, apiKey)
 
         if (success) {
-            Log.d(TAG, "Heartbeat sent successfully in response to backend check");
-            // Ensure scheduled work is added if missing
-            HeartbeatManager.scheduleHeartbeat(this);
+            Log.d(TAG, "Heartbeat sent successfully in response to backend check")
         } else {
-            Log.e(TAG, "Failed to send heartbeat in response to backend check");
-            // Still try to ensure scheduled work is added
-            HeartbeatManager.scheduleHeartbeat(this);
+            Log.e(TAG, "Failed to send heartbeat in response to backend check")
         }
+        HeartbeatManager.scheduleHeartbeat(this)
     }
 
-    /**
-     * Enqueue SMS to recipients via the device-side send queue.
-     * SIM resolution and rate limiting are handled by SmsSendWorker.
-     */
-    private void sendSMS(SMSPayload smsPayload) {
+    private fun sendSMS(smsPayload: SMSPayload?) {
         if (smsPayload == null) {
-            Log.e(TAG, "SMS payload is null");
-            return;
+            Log.e(TAG, "SMS payload is null")
+            return
         }
 
-        String[] recipients = smsPayload.getRecipients();
-        if (recipients == null || recipients.length == 0) {
-            Log.e(TAG, "No recipients found in SMS payload");
-            return;
+        val recipients = smsPayload.recipients
+        if (recipients.isNullOrEmpty()) {
+            Log.e(TAG, "No recipients found in SMS payload")
+            return
         }
 
-        for (String recipient : recipients) {
-            SmsSendWorker.enqueue(this, recipient, smsPayload.getMessage(),
-                    smsPayload.getSmsId(), smsPayload.getSmsBatchId(),
-                    smsPayload.getSimSubscriptionId());
+        val message = smsPayload.message
+        val smsId = smsPayload.smsId
+        if (message == null || smsId == null) {
+            Log.e(TAG, "Missing SMS message or SMS ID in payload")
+            return
         }
 
-        Log.d(TAG, "Enqueued " + recipients.length + " SMS for sending - Batch: " + smsPayload.getSmsBatchId());
+        for (recipient in recipients) {
+            SmsSendWorker.enqueue(
+                this,
+                recipient,
+                message,
+                smsId,
+                smsPayload.smsBatchId,
+                smsPayload.simSubscriptionId
+            )
+        }
+
+        Log.d(TAG, "Enqueued ${recipients.size} SMS for sending - Batch: ${smsPayload.smsBatchId}")
     }
 
-    @Override
-    public void onNewToken(String token) {
-        sendRegistrationToServer(token);
+    override fun onNewToken(token: String) {
+        sendRegistrationToServer(token)
     }
 
-    private void sendRegistrationToServer(String token) {
-        // Check if device ID and API key are saved in shared preferences
-        String deviceId = SharedPreferenceHelper.getSharedPreferenceString(this, AppConstants.SHARED_PREFS_DEVICE_ID_KEY, "");
-        String apiKey = SharedPreferenceHelper.getSharedPreferenceString(this, AppConstants.SHARED_PREFS_API_KEY_KEY, "");
-        
-        // Only proceed if both device ID and API key are available
+    private fun sendRegistrationToServer(token: String) {
+        val deviceId = SharedPreferenceHelper.getSharedPreferenceString(
+            this,
+            AppConstants.SHARED_PREFS_DEVICE_ID_KEY,
+            ""
+        ).orEmpty()
+        val apiKey = SharedPreferenceHelper.getSharedPreferenceString(
+            this,
+            AppConstants.SHARED_PREFS_API_KEY_KEY,
+            ""
+        ).orEmpty()
+
         if (deviceId.isEmpty() || apiKey.isEmpty()) {
-            Log.d(TAG, "Device ID or API key not available, skipping FCM token update");
-            return;
+            Log.d(TAG, "Device ID or API key not available, skipping FCM token update")
+            return
         }
-        
-        // Create update payload with new FCM token
-        RegisterDeviceInputDTO updateInput = new RegisterDeviceInputDTO();
-        updateInput.setFcmToken(token);
-        
-        // Call API to update the device with new token
-        Log.d(TAG, "Updating FCM token for device: " + deviceId);
+
+        val updateInput = RegisterDeviceInputDTO().apply {
+            fcmToken = token
+        }
+
+        Log.d(TAG, "Updating FCM token for device: $deviceId")
         ApiManager.getApiService()
             .updateDevice(deviceId, apiKey, updateInput)
-            .enqueue(new Callback<RegisterDeviceResponseDTO>() {
-                @Override
-                public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
-                    if (response.isSuccessful()) {
-                        Log.d(TAG, "FCM token updated successfully");
+            .enqueue(object : Callback<RegisterDeviceResponseDTO> {
+                override fun onResponse(
+                    call: Call<RegisterDeviceResponseDTO>,
+                    response: Response<RegisterDeviceResponseDTO>
+                ) {
+                    if (response.isSuccessful) {
+                        Log.d(TAG, "FCM token updated successfully")
                     } else {
-                        Log.e(TAG, "Failed to update FCM token. Response code: " + response.code());
+                        Log.e(TAG, "Failed to update FCM token. Response code: ${response.code()}")
                     }
                 }
-                
-                @Override
-                public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
-                    Log.e(TAG, "Error updating FCM token: " + t.getMessage());
+
+                override fun onFailure(call: Call<RegisterDeviceResponseDTO>, t: Throwable) {
+                    Log.e(TAG, "Error updating FCM token: ${t.message}")
                 }
-            });
+            })
     }
 
-    /* build and show notification */
-    private void sendNotification(String title, String messageBody) {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0 /* Request code */, intent,
-                PendingIntent.FLAG_ONE_SHOT);
+    @Suppress("unused")
+    private fun sendNotification(title: String, messageBody: String) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        var flags = PendingIntent.FLAG_ONE_SHOT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags = flags or PendingIntent.FLAG_IMMUTABLE
+        }
+        val pendingIntent = PendingIntent.getActivity(this, 0, intent, flags)
 
-        String channelId = DEFAULT_NOTIFICATION_CHANNEL_ID;
-        Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-        NotificationCompat.Builder notificationBuilder =
-                new NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
-                        .setSmallIcon(R.drawable.ic_launcher_foreground)
-                        .setContentTitle(title)
-                        .setContentText(messageBody)
-                        .setAutoCancel(true)
-                        .setSound(defaultSoundUri)
-                        .setContentIntent(pendingIntent);
+        val channelId = DEFAULT_NOTIFICATION_CHANNEL_ID
+        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val notificationBuilder = NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText(messageBody)
+            .setAutoCancel(true)
+            .setSound(defaultSoundUri)
+            .setContentIntent(pendingIntent)
 
-        NotificationManager notificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        // Since android Oreo notification channel is needed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(channelId,
-                    "Channel human readable title",
-                    NotificationManager.IMPORTANCE_DEFAULT);
-            notificationManager.createNotificationChannel(channel);
+            val channel = NotificationChannel(
+                channelId,
+                "Channel human readable title",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            notificationManager.createNotificationChannel(channel)
         }
 
-        notificationManager.notify(0 /* ID of notification */, notificationBuilder.build());
+        notificationManager.notify(0, notificationBuilder.build())
+    }
+
+    companion object {
+        private const val TAG = "FirebaseMessagingService"
+        private const val DEFAULT_NOTIFICATION_CHANNEL_ID = "N1"
     }
 }

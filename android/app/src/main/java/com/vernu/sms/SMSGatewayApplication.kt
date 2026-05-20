@@ -1,34 +1,29 @@
-package com.vernu.sms;
+package com.vernu.sms
 
-import android.app.Application;
-import android.util.Log;
+import android.app.Application
+import android.util.Log
+import androidx.work.Configuration
+import androidx.work.WorkManager
 
-import androidx.work.Configuration;
-import androidx.work.WorkManager;
+class SMSGatewayApplication : Application(), Configuration.Provider {
+    override fun onCreate() {
+        super.onCreate()
 
-public class SMSGatewayApplication extends Application implements Configuration.Provider {
-    private static final String TAG = "SMSGatewayApplication";
-    
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        
-        // Initialize WorkManager early to ensure it's ready for background work
-        // This is important for background tasks like heartbeat
         try {
-            WorkManager.initialize(this, getWorkManagerConfiguration());
-            Log.d(TAG, "WorkManager initialized successfully");
-        } catch (IllegalStateException e) {
-            // WorkManager might already be initialized (e.g., by androidx.startup)
-            // This is fine, we can continue
-            Log.d(TAG, "WorkManager already initialized or will be initialized automatically");
+            WorkManager.initialize(this, workManagerConfiguration)
+            Log.d(TAG, "WorkManager initialized successfully")
+        } catch (e: IllegalStateException) {
+            Log.d(TAG, "WorkManager already initialized or will be initialized automatically")
         }
     }
-    
-    @Override
-    public Configuration getWorkManagerConfiguration() {
-        return new Configuration.Builder()
-            .setMinimumLoggingLevel(android.util.Log.INFO)
-            .build();
+
+    override fun getWorkManagerConfiguration(): Configuration {
+        return Configuration.Builder()
+            .setMinimumLoggingLevel(Log.INFO)
+            .build()
     }
-} 
+
+    companion object {
+        private const val TAG = "SMSGatewayApplication"
+    }
+}

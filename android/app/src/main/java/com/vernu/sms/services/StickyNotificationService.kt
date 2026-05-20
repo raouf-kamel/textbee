@@ -1,103 +1,103 @@
-package com.vernu.sms.services;
+package com.vernu.sms.services
 
-import android.app.ForegroundServiceStartNotAllowedException;
-import android.app.*;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.os.IBinder;
-import android.provider.Telephony;
-import android.util.Log;
-import android.widget.Toast;
+import android.app.ForegroundServiceStartNotAllowedException
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.os.IBinder
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.vernu.sms.AppConstants
+import com.vernu.sms.R
+import com.vernu.sms.activities.MainActivity
+import com.vernu.sms.helpers.SharedPreferenceHelper
 
-import androidx.core.app.NotificationCompat;
-
-import com.vernu.sms.R;
-import com.vernu.sms.activities.MainActivity;
-import com.vernu.sms.receivers.SMSBroadcastReceiver;
-import com.vernu.sms.AppConstants;
-import com.vernu.sms.helpers.SharedPreferenceHelper;
-
-public class StickyNotificationService extends Service {
-
-    private static final String TAG = "StickyNotificationService";
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        Log.i(TAG, "Service onBind " + intent.getAction());
-        return null;
+class StickyNotificationService : Service() {
+    override fun onBind(intent: Intent?): IBinder? {
+        Log.i(TAG, "Service onBind ${intent?.action}")
+        return null
     }
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        Log.i(TAG, "Service Started");
+    override fun onCreate() {
+        super.onCreate()
+        Log.i(TAG, "Service Started")
 
-        // Only show notification if enabled in preferences
-        boolean stickyNotificationEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
-                getApplicationContext(),
-                AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY,
-                false
-        );
+        val stickyNotificationEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+            applicationContext,
+            AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY,
+            false,
+        )
 
         if (stickyNotificationEnabled) {
-            Notification notification = createNotification();
+            val notification = createNotification()
             try {
-                startForeground(1, notification);
-                Log.i(TAG, "Started foreground service with sticky notification");
-            } catch (ForegroundServiceStartNotAllowedException e) {
-                Log.w(TAG, "Cannot start foreground from background, stopping service: " + e.getMessage());
-                stopSelf();
-                return;
+                startForeground(1, notification)
+                Log.i(TAG, "Started foreground service with sticky notification")
+            } catch (e: ForegroundServiceStartNotAllowedException) {
+                Log.w(TAG, "Cannot start foreground from background, stopping service: ${e.message}")
+                stopSelf()
             }
         } else {
-            Log.i(TAG, "Sticky notification disabled by user preference");
+            Log.i(TAG, "Sticky notification disabled by user preference")
         }
     }
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i(TAG, "Received start id " + startId + ": " + intent);
-        return START_STICKY;
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.i(TAG, "Received start id $startId: $intent")
+        return START_STICKY
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        
-        Log.i(TAG, "StickyNotificationService destroyed");
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.i(TAG, "StickyNotificationService destroyed")
     }
 
-    private Notification createNotification() {
-        String notificationChannelId = "stickyNotificationChannel";
+    private fun createNotification(): Notification {
+        val notificationChannelId = "stickyNotificationChannel"
 
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        NotificationChannel channel = null;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            channel = new NotificationChannel(notificationChannelId, notificationChannelId, NotificationManager.IMPORTANCE_HIGH);
-            channel.enableVibration(false);
-            channel.setShowBadge(false);
-            notificationManager.createNotificationChannel(channel);
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = NotificationChannel(
+                notificationChannelId,
+                notificationChannelId,
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                enableVibration(false)
+                setShowBadge(false)
+            }
+            notificationManager.createNotificationChannel(channel)
 
-            Intent notificationIntent = new Intent(this, MainActivity.class);
-            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            val notificationIntent = Intent(this, MainActivity::class.java)
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                notificationIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
 
-            Notification.Builder builder = new Notification.Builder(this, notificationChannelId);
-            return builder.setContentTitle("TextBee Active")
-                    .setContentText("SMS gateway service is active")
-                    .setContentIntent(pendingIntent)
-                    .setOngoing(true)
-                    .setSmallIcon(R.mipmap.ic_launcher)
-                    .build();
+            Notification.Builder(this, notificationChannelId)
+                .setContentTitle("TextBee Active")
+                .setContentText("SMS gateway service is active")
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .build()
         } else {
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(this, notificationChannelId);
-            return builder.setContentTitle("TextBee Active")
-                    .setContentText("SMS gateway service is active")
-                    .setOngoing(true)
-                    .setSmallIcon(R.mipmap.ic_launcher)
-                    .build();
+            NotificationCompat.Builder(this, notificationChannelId)
+                .setContentTitle("TextBee Active")
+                .setContentText("SMS gateway service is active")
+                .setOngoing(true)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .build()
         }
+    }
 
+    companion object {
+        private const val TAG = "StickyNotificationService"
     }
 }

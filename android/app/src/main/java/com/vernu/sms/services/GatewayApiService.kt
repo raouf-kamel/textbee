@@ -1,32 +1,50 @@
-package com.vernu.sms.services;
+package com.vernu.sms.services
 
-import com.vernu.sms.dtos.SMSDTO;
-import com.vernu.sms.dtos.SMSForwardResponseDTO;
-import com.vernu.sms.dtos.RegisterDeviceInputDTO;
-import com.vernu.sms.dtos.RegisterDeviceResponseDTO;
-import com.vernu.sms.dtos.HeartbeatInputDTO;
-import com.vernu.sms.dtos.HeartbeatResponseDTO;
+import com.vernu.sms.dtos.HeartbeatInputDTO
+import com.vernu.sms.dtos.HeartbeatResponseDTO
+import com.vernu.sms.dtos.RegisterDeviceInputDTO
+import com.vernu.sms.dtos.RegisterDeviceResponseDTO
+import com.vernu.sms.dtos.SMSDTO
+import com.vernu.sms.dtos.SMSForwardResponseDTO
+import retrofit2.Call
+import retrofit2.http.Body
+import retrofit2.http.Header
+import retrofit2.http.PATCH
+import retrofit2.http.POST
+import retrofit2.http.Path
 
-import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.Header;
-import retrofit2.http.PATCH;
-import retrofit2.http.POST;
-import retrofit2.http.Path;
-
-public interface GatewayApiService {
+interface GatewayApiService {
     @POST("gateway/devices")
-    Call<RegisterDeviceResponseDTO> registerDevice(@Header("x-api-key") String apiKey, @Body() RegisterDeviceInputDTO body);
+    fun registerDevice(
+        @Header("x-api-key") apiKey: String?,
+        @Body body: RegisterDeviceInputDTO,
+    ): Call<RegisterDeviceResponseDTO>
 
     @PATCH("gateway/devices/{deviceId}")
-    Call<RegisterDeviceResponseDTO> updateDevice(@Path("deviceId") String deviceId, @Header("x-api-key") String apiKey, @Body() RegisterDeviceInputDTO body);
+    fun updateDevice(
+        @Path("deviceId") deviceId: String?,
+        @Header("x-api-key") apiKey: String?,
+        @Body body: RegisterDeviceInputDTO,
+    ): Call<RegisterDeviceResponseDTO>
 
     @POST("gateway/devices/{deviceId}/receive-sms")
-    Call<SMSForwardResponseDTO> sendReceivedSMS(@Path("deviceId") String deviceId, @Header("x-api-key") String apiKey, @Body() SMSDTO body);
+    fun sendReceivedSMS(
+        @Path("deviceId") deviceId: String?,
+        @Header("x-api-key") apiKey: String?,
+        @Body body: SMSDTO,
+    ): Call<SMSForwardResponseDTO>
 
     @PATCH("gateway/devices/{deviceId}/sms-status")
-    Call<SMSForwardResponseDTO> updateSMSStatus(@Path("deviceId") String deviceId, @Header("x-api-key") String apiKey, @Body() SMSDTO body);
+    fun updateSMSStatus(
+        @Path("deviceId") deviceId: String?,
+        @Header("x-api-key") apiKey: String?,
+        @Body body: SMSDTO,
+    ): Call<SMSForwardResponseDTO>
 
     @POST("gateway/devices/{deviceId}/heartbeat")
-    Call<HeartbeatResponseDTO> heartbeat(@Path("deviceId") String deviceId, @Header("x-api-key") String apiKey, @Body() HeartbeatInputDTO body);
+    fun heartbeat(
+        @Path("deviceId") deviceId: String?,
+        @Header("x-api-key") apiKey: String?,
+        @Body body: HeartbeatInputDTO,
+    ): Call<HeartbeatResponseDTO>
 }

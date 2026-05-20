@@ -1,305 +1,262 @@
-package com.vernu.sms;
+package com.vernu.sms
 
-import android.Manifest;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Build;
-import android.telephony.SubscriptionInfo;
-import android.telephony.SubscriptionManager;
-import android.util.Log;
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.telephony.SubscriptionInfo
+import android.telephony.SubscriptionManager
+import android.util.Log
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.vernu.sms.dtos.SimInfoDTO
+import com.vernu.sms.helpers.SharedPreferenceHelper
+import com.vernu.sms.services.StickyNotificationService
 
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+object TextBeeUtils {
+    private const val TAG = "TextBeeUtils"
 
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
-import com.vernu.sms.services.StickyNotificationService;
-import com.vernu.sms.helpers.SharedPreferenceHelper;
-import com.vernu.sms.dtos.SimInfoDTO;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-public class TextBeeUtils {
-    private static final String TAG = "TextBeeUtils";
-    
-    public static boolean isPermissionGranted(Context context, String permission) {
-        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED;
+    @JvmStatic
+    fun isPermissionGranted(context: Context, permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
 
-    public static List<SubscriptionInfo> getAvailableSimSlots(Context context) {
-
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            return new ArrayList<>();
-        }
-
-        SubscriptionManager subscriptionManager = SubscriptionManager.from(context);
-        return subscriptionManager.getActiveSubscriptionInfoList();
-
-    }
-
-    public static void startStickyNotificationService(Context context) {
-        if(!isPermissionGranted(context, Manifest.permission.RECEIVE_SMS)){
-            return;
-        }
-        
-        // Only start service if user has enabled sticky notification
-        boolean stickyNotificationEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+    @JvmStatic
+    fun getAvailableSimSlots(context: Context): List<SubscriptionInfo> {
+        if (
+            ActivityCompat.checkSelfPermission(
                 context,
-                AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY,
-                false
-        );
-        
+                Manifest.permission.READ_PHONE_STATE,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return emptyList()
+        }
+
+        return SubscriptionManager.from(context).activeSubscriptionInfoList ?: emptyList()
+    }
+
+    @JvmStatic
+    fun startStickyNotificationService(context: Context) {
+        if (!isPermissionGranted(context, Manifest.permission.RECEIVE_SMS)) {
+            return
+        }
+
+        val stickyNotificationEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+            context,
+            AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY,
+            false,
+        )
+
         if (stickyNotificationEnabled) {
-            Intent notificationIntent = new Intent(context, StickyNotificationService.class);
+            val notificationIntent = Intent(context, StickyNotificationService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(notificationIntent);
+                context.startForegroundService(notificationIntent)
             } else {
-                context.startService(notificationIntent);
+                context.startService(notificationIntent)
             }
-            Log.i(TAG, "Starting sticky notification service");
+            Log.i(TAG, "Starting sticky notification service")
         } else {
-            Log.i(TAG, "Sticky notification disabled by user, not starting service");
+            Log.i(TAG, "Sticky notification disabled by user, not starting service")
         }
     }
 
-    public static void stopStickyNotificationService(Context context) {
-        Intent notificationIntent = new Intent(context, StickyNotificationService.class);
-        context.stopService(notificationIntent);
-        Log.i(TAG, "Stopping sticky notification service");
+    @JvmStatic
+    fun stopStickyNotificationService(context: Context) {
+        val notificationIntent = Intent(context, StickyNotificationService::class.java)
+        context.stopService(notificationIntent)
+        Log.i(TAG, "Stopping sticky notification service")
     }
-    
-    /**
-     * Log a non-fatal exception to Crashlytics with additional context information
-     * 
-     * @param throwable The exception to log
-     * @param message A message describing what happened
-     * @param customData Optional map of custom key-value pairs to add as context
-     */
-    public static void logException(Throwable throwable, String message, Map<String, Object> customData) {
+
+    @JvmStatic
+    fun logException(throwable: Throwable, message: String, customData: Map<String, Any>?) {
         try {
-            Log.e(TAG, message, throwable);
-            
-            FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
-            crashlytics.log(message);
-            
-            // Add any custom data as key-value pairs
-            if (customData != null) {
-                for (Map.Entry<String, Object> entry : customData.entrySet()) {
-                    if (entry.getValue() instanceof String) {
-                        crashlytics.setCustomKey(entry.getKey(), (String) entry.getValue());
-                    } else if (entry.getValue() instanceof Boolean) {
-                        crashlytics.setCustomKey(entry.getKey(), (Boolean) entry.getValue());
-                    } else if (entry.getValue() instanceof Integer) {
-                        crashlytics.setCustomKey(entry.getKey(), (Integer) entry.getValue());
-                    } else if (entry.getValue() instanceof Long) {
-                        crashlytics.setCustomKey(entry.getKey(), (Long) entry.getValue());
-                    } else if (entry.getValue() instanceof Float) {
-                        crashlytics.setCustomKey(entry.getKey(), (Float) entry.getValue());
-                    } else if (entry.getValue() instanceof Double) {
-                        crashlytics.setCustomKey(entry.getKey(), (Double) entry.getValue());
-                    } else if (entry.getValue() != null) {
-                        crashlytics.setCustomKey(entry.getKey(), entry.getValue().toString());
-                    }
+            Log.e(TAG, message, throwable)
+
+            val crashlytics = FirebaseCrashlytics.getInstance()
+            crashlytics.log(message)
+
+            customData?.forEach { (key, value) ->
+                when (value) {
+                    is String -> crashlytics.setCustomKey(key, value)
+                    is Boolean -> crashlytics.setCustomKey(key, value)
+                    is Int -> crashlytics.setCustomKey(key, value)
+                    is Long -> crashlytics.setCustomKey(key, value)
+                    is Float -> crashlytics.setCustomKey(key, value)
+                    is Double -> crashlytics.setCustomKey(key, value)
+                    else -> crashlytics.setCustomKey(key, value.toString())
                 }
             }
-            
-            // Record the exception
-            crashlytics.recordException(throwable);
-        } catch (Exception e) {
-            Log.e(TAG, "Error logging exception to Crashlytics", e);
+
+            crashlytics.recordException(throwable)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error logging exception to Crashlytics", e)
         }
     }
-    
-    /**
-     * Simplified method to log a non-fatal exception with just a message
-     */
-    public static void logException(Throwable throwable, String message) {
-        logException(throwable, message, null);
+
+    @JvmStatic
+    fun logException(throwable: Throwable, message: String) {
+        logException(throwable, message, null)
     }
 
-    /**
-     * Collects all available SIM information (physical SIMs and eSIMs) from the device
-     * 
-     * @param context The application context
-     * @return List of SimInfoDTO objects containing SIM information, or empty list if permission not granted
-     */
-    public static List<SimInfoDTO> collectSimInfo(Context context) {
-        List<SimInfoDTO> simInfoList = new ArrayList<>();
+    @JvmStatic
+    fun collectSimInfo(context: Context): List<SimInfoDTO> {
+        val simInfoList = mutableListOf<SimInfoDTO>()
 
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            Log.w(TAG, "READ_PHONE_STATE permission not granted, cannot collect SIM info");
-            return simInfoList;
+        if (
+            ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_PHONE_STATE,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.w(TAG, "READ_PHONE_STATE permission not granted, cannot collect SIM info")
+            return simInfoList
         }
 
         try {
-            SubscriptionManager subscriptionManager = SubscriptionManager.from(context);
-            List<SubscriptionInfo> subscriptionInfoList = subscriptionManager.getActiveSubscriptionInfoList();
-
+            val subscriptionInfoList = SubscriptionManager.from(context).activeSubscriptionInfoList
             if (subscriptionInfoList == null) {
-                Log.d(TAG, "No active subscriptions found");
-                return simInfoList;
+                Log.d(TAG, "No active subscriptions found")
+                return simInfoList
             }
 
-            for (SubscriptionInfo subscriptionInfo : subscriptionInfoList) {
-                SimInfoDTO simInfo = new SimInfoDTO();
-                simInfo.setSubscriptionId(subscriptionInfo.getSubscriptionId());
-
-                // Get ICCID (may be null for eSIM)
-                try {
-                    String iccId = subscriptionInfo.getIccId();
-                    if (iccId != null && !iccId.isEmpty()) {
-                        simInfo.setIccId(iccId);
-                    }
-                } catch (Exception e) {
-                    Log.d(TAG, "Could not get ICCID for subscription " + subscriptionInfo.getSubscriptionId());
+            for (subscriptionInfo in subscriptionInfoList) {
+                val simInfo = SimInfoDTO().apply {
+                    subscriptionId = subscriptionInfo.subscriptionId
                 }
 
-                // Get Card ID
+                try {
+                    subscriptionInfo.iccId?.takeIf { it.isNotEmpty() }?.let {
+                        simInfo.iccId = it
+                    }
+                } catch (e: Exception) {
+                    Log.d(TAG, "Could not get ICCID for subscription ${subscriptionInfo.subscriptionId}")
+                }
+
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        int cardId = subscriptionInfo.getCardId();
-                        // INVALID_CARD_ID is -1, check for valid card ID (>= 0)
+                        val cardId = subscriptionInfo.cardId
                         if (cardId >= 0) {
-                            simInfo.setCardId(cardId);
+                            simInfo.cardId = cardId
                         }
                     }
-                } catch (Exception e) {
-                    Log.d(TAG, "Could not get Card ID for subscription " + subscriptionInfo.getSubscriptionId());
+                } catch (e: Exception) {
+                    Log.d(TAG, "Could not get Card ID for subscription ${subscriptionInfo.subscriptionId}")
                 }
 
-                // Get carrier name
                 try {
-                    CharSequence carrierName = subscriptionInfo.getCarrierName();
-                    if (carrierName != null) {
-                        simInfo.setCarrierName(carrierName.toString());
+                    subscriptionInfo.carrierName?.let {
+                        simInfo.carrierName = it.toString()
                     }
-                } catch (Exception e) {
-                    Log.d(TAG, "Could not get carrier name for subscription " + subscriptionInfo.getSubscriptionId());
+                } catch (e: Exception) {
+                    Log.d(TAG, "Could not get carrier name for subscription ${subscriptionInfo.subscriptionId}")
                 }
 
-                // Get display name
                 try {
-                    CharSequence displayName = subscriptionInfo.getDisplayName();
-                    if (displayName != null) {
-                        simInfo.setDisplayName(displayName.toString());
+                    subscriptionInfo.displayName?.let {
+                        simInfo.displayName = it.toString()
                     }
-                } catch (Exception e) {
-                    Log.d(TAG, "Could not get display name for subscription " + subscriptionInfo.getSubscriptionId());
+                } catch (e: Exception) {
+                    Log.d(TAG, "Could not get display name for subscription ${subscriptionInfo.subscriptionId}")
                 }
 
-                // Get SIM slot index
                 try {
-                    int simSlotIndex = subscriptionInfo.getSimSlotIndex();
+                    val simSlotIndex = subscriptionInfo.simSlotIndex
                     if (simSlotIndex >= 0) {
-                        simInfo.setSimSlotIndex(simSlotIndex);
+                        simInfo.simSlotIndex = simSlotIndex
                     }
-                } catch (Exception e) {
-                    Log.d(TAG, "Could not get SIM slot index for subscription " + subscriptionInfo.getSubscriptionId());
+                } catch (e: Exception) {
+                    Log.d(TAG, "Could not get SIM slot index for subscription ${subscriptionInfo.subscriptionId}")
                 }
 
-                // Get MCC (getMccString() is API 29+; use getMcc() on older devices)
                 try {
-                    String mcc = null;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        mcc = subscriptionInfo.getMccString();
-                    } else {
-                        int mccInt = subscriptionInfo.getMcc();
-                        if (mccInt != Integer.MAX_VALUE) {
-                            mcc = String.format("%03d", mccInt);
-                        }
+                    val mcc = getMcc(subscriptionInfo)
+                    if (!mcc.isNullOrEmpty()) {
+                        simInfo.mcc = mcc
                     }
-                    if (mcc != null && !mcc.isEmpty()) {
-                        simInfo.setMcc(mcc);
-                    }
-                } catch (Exception e) {
-                    Log.d(TAG, "Could not get MCC for subscription " + subscriptionInfo.getSubscriptionId());
+                } catch (e: Exception) {
+                    Log.d(TAG, "Could not get MCC for subscription ${subscriptionInfo.subscriptionId}")
                 }
 
-                // Get MNC (getMncString() is API 29+; use getMnc() on older devices)
                 try {
-                    String mnc = null;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        mnc = subscriptionInfo.getMncString();
-                    } else {
-                        int mncInt = subscriptionInfo.getMnc();
-                        if (mncInt != Integer.MAX_VALUE) {
-                            mnc = String.valueOf(mncInt);
-                        }
+                    val mnc = getMnc(subscriptionInfo)
+                    if (!mnc.isNullOrEmpty()) {
+                        simInfo.mnc = mnc
                     }
-                    if (mnc != null && !mnc.isEmpty()) {
-                        simInfo.setMnc(mnc);
-                    }
-                } catch (Exception e) {
-                    Log.d(TAG, "Could not get MNC for subscription " + subscriptionInfo.getSubscriptionId());
+                } catch (e: Exception) {
+                    Log.d(TAG, "Could not get MNC for subscription ${subscriptionInfo.subscriptionId}")
                 }
 
-                // Get country ISO
                 try {
-                    String countryIso = subscriptionInfo.getCountryIso();
-                    if (countryIso != null && !countryIso.isEmpty()) {
-                        simInfo.setCountryIso(countryIso);
+                    subscriptionInfo.countryIso?.takeIf { it.isNotEmpty() }?.let {
+                        simInfo.countryIso = it
                     }
-                } catch (Exception e) {
-                    Log.d(TAG, "Could not get country ISO for subscription " + subscriptionInfo.getSubscriptionId());
+                } catch (e: Exception) {
+                    Log.d(TAG, "Could not get country ISO for subscription ${subscriptionInfo.subscriptionId}")
                 }
 
-                // Get subscription type (0 = physical SIM, 1 = eSIM)
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        int subscriptionType = subscriptionInfo.getSubscriptionType();
-                        if (subscriptionType == SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM) {
-                            simInfo.setSubscriptionType("PHYSICAL_SIM");
-                        } else if (subscriptionType == SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM) {
-                            simInfo.setSubscriptionType("ESIM");
+                        when (subscriptionInfo.subscriptionType) {
+                            SubscriptionManager.SUBSCRIPTION_TYPE_LOCAL_SIM -> simInfo.subscriptionType = "PHYSICAL_SIM"
+                            SubscriptionManager.SUBSCRIPTION_TYPE_REMOTE_SIM -> simInfo.subscriptionType = "ESIM"
                         }
                     } else {
-                        // For older Android versions, default to PHYSICAL_SIM
-                        simInfo.setSubscriptionType("PHYSICAL_SIM");
+                        simInfo.subscriptionType = "PHYSICAL_SIM"
                     }
-                } catch (Exception e) {
-                    Log.d(TAG, "Could not get subscription type for subscription " + subscriptionInfo.getSubscriptionId());
+                } catch (e: Exception) {
+                    Log.d(TAG, "Could not get subscription type for subscription ${subscriptionInfo.subscriptionId}")
                 }
 
-                simInfoList.add(simInfo);
+                simInfoList.add(simInfo)
             }
-        } catch (Exception e) {
-            Log.e(TAG, "Error collecting SIM info: " + e.getMessage(), e);
+        } catch (e: Exception) {
+            Log.e(TAG, "Error collecting SIM info: ${e.message}", e)
         }
 
-        return simInfoList;
+        return simInfoList
     }
 
-    /**
-     * Validates if a subscription ID exists in the active subscriptions
-     * 
-     * @param context The application context
-     * @param subscriptionId The subscription ID to validate
-     * @return true if the subscription ID exists, false otherwise
-     */
-    public static boolean isValidSubscriptionId(Context context, int subscriptionId) {
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            return false;
+    @JvmStatic
+    fun isValidSubscriptionId(context: Context, subscriptionId: Int): Boolean {
+        if (
+            ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_PHONE_STATE,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return false
         }
 
-        try {
-            SubscriptionManager subscriptionManager = SubscriptionManager.from(context);
-            List<SubscriptionInfo> subscriptionInfoList = subscriptionManager.getActiveSubscriptionInfoList();
-
-            if (subscriptionInfoList == null) {
-                return false;
-            }
-
-            for (SubscriptionInfo subscriptionInfo : subscriptionInfoList) {
-                if (subscriptionInfo.getSubscriptionId() == subscriptionId) {
-                    return true;
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error validating subscription ID: " + e.getMessage(), e);
+        return try {
+            SubscriptionManager.from(context)
+                .activeSubscriptionInfoList
+                ?.any { subscriptionInfo -> subscriptionInfo.subscriptionId == subscriptionId }
+                ?: false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error validating subscription ID: ${e.message}", e)
+            false
         }
+    }
 
-        return false;
+    @Suppress("DEPRECATION")
+    private fun getMcc(subscriptionInfo: SubscriptionInfo): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            subscriptionInfo.mccString
+        } else {
+            val mccInt = subscriptionInfo.mcc
+            if (mccInt != Int.MAX_VALUE) "%03d".format(mccInt) else null
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun getMnc(subscriptionInfo: SubscriptionInfo): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            subscriptionInfo.mncString
+        } else {
+            val mncInt = subscriptionInfo.mnc
+            if (mncInt != Int.MAX_VALUE) mncInt.toString() else null
+        }
     }
 }

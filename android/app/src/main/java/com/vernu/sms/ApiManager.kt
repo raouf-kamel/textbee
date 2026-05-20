@@ -1,33 +1,23 @@
-package com.vernu.sms;
+package com.vernu.sms
 
-import com.vernu.sms.services.GatewayApiService;
+import com.vernu.sms.services.GatewayApiService
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+object ApiManager {
+    private var apiService: GatewayApiService? = null
 
-public class ApiManager {
-    private static GatewayApiService apiService;
-
-    public static GatewayApiService getApiService() {
-        if (apiService == null) {
-            apiService = createApiService();
-        }
-        return apiService;
+    @JvmStatic
+    fun getApiService(): GatewayApiService {
+        return apiService ?: createApiService().also { apiService = it }
     }
 
-    private static GatewayApiService createApiService() {
-//        OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
-//        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
-//        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
-//        httpClient.addInterceptor(loggingInterceptor);
+    private fun createApiService(): GatewayApiService {
+        val retrofit = Retrofit.Builder()
+            .baseUrl(AppConstants.API_BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
 
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(AppConstants.API_BASE_URL)
-//                .client(httpClient.build())
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
-        apiService = retrofit.create(GatewayApiService.class);
-
-        return retrofit.create(GatewayApiService.class);
+        return retrofit.create(GatewayApiService::class.java)
     }
 }

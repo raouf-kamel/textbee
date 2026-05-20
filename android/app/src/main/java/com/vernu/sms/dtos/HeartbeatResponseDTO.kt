@@ -1,8 +1,15 @@
-package com.vernu.sms.dtos;
+package com.vernu.sms.dtos
 
-public class HeartbeatResponseDTO {
-    public boolean success;
-    public boolean fcmTokenUpdated;
-    public long lastHeartbeat;
-    public String name;
+class HeartbeatResponseDTO {
+    @JvmField
+    var success: Boolean = false
+
+    @JvmField
+    var fcmTokenUpdated: Boolean = false
+
+    @JvmField
+    var lastHeartbeat: Long = 0
+
+    @JvmField
+    var name: String? = null
 }
