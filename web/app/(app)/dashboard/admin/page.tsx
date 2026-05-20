@@ -29,7 +29,7 @@ type User = {
   emailVerifiedAt: string | null
   createdAt: string
   subscription: {
-    plan: { name: string; dailyLimit: number; monthlyLimit: number }
+    plan: { name: string; dailyLimit: number; monthlyLimit: number; bulkSendLimit: number }
     isActive: boolean
     status: string
     subscriptionEndDate?: string
