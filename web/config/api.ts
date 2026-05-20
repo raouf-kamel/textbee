@@ -47,4 +47,16 @@ export const ApiEndpoints = {
     customerSupport: () => '/support/customer-support',
     requestAccountDeletion: () => '/support/request-account-deletion',
   },
+  admin: {
+    stats: () => '/admin/stats',
+    listUsers: (page: number, limit: number, search?: string) => {
+      const searchParam = search ? `&search=${encodeURIComponent(search)}` : ''
+      return `/admin/users?page=${page}&limit=${limit}${searchParam}`
+    },
+    updateRole: (id: string) => `/admin/users/${id}/role`,
+    toggleBan: (id: string) => `/admin/users/${id}/ban`,
+    overrideSubscription: (id: string) => `/admin/users/${id}/subscription/override`,
+    getUserDevices: (id: string) => `/admin/users/${id}/devices`,
+    deleteDevice: (deviceId: string) => `/admin/devices/${deviceId}`,
+  },
 }

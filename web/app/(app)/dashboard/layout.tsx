@@ -1,8 +1,9 @@
 'use client'
 
-import { Home, MessageSquareText, UserCircle, Users } from 'lucide-react'
+import { Home, MessageSquareText, UserCircle, Users, ShieldAlert } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import AccountDeletionAlert from './(components)/account-deletion-alert'
 import UpgradeToProAlert from './(components)/upgrade-to-pro-alert'
 import UpdateAppModal from './(components)/update-app-modal'
@@ -17,6 +18,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const { data: session } = useSession()
 
   return (
     <div className='flex min-h-screen flex-col md:flex-row'>
@@ -47,6 +49,14 @@ export default function DashboardLayout({
             label='Account'
             isActive={pathname === '/dashboard/account'}
           />
+          {session?.user?.role === 'ADMIN' && (
+            <NavItem
+              href='/dashboard/admin'
+              icon={<ShieldAlert className='h-6 w-6 stroke-[1.5]' />}
+              label='Admin'
+              isActive={pathname.startsWith('/dashboard/admin')}
+            />
+          )}
         </nav>
       </aside>
 
@@ -90,6 +100,14 @@ export default function DashboardLayout({
             label='Account'
             isActive={pathname === '/dashboard/account'}
           />
+          {session?.user?.role === 'ADMIN' && (
+            <MobileNavItem
+              href='/dashboard/admin'
+              icon={<ShieldAlert className='h-5 w-5 stroke-[1.5]' />}
+              label='Admin'
+              isActive={pathname.startsWith('/dashboard/admin')}
+            />
+          )}
         </div>
       </nav>
 
@@ -153,7 +171,7 @@ function MobileNavItem({
     <Link
       href={href}
       prefetch={true}
-      className={`flex flex-col items-center justify-center p-2 rounded-md w-[23%] ${isActive
+      className={`flex flex-col items-center justify-center p-2 rounded-md flex-1 ${isActive
         ? 'border border-brand-500 dark:border-brand-400 bg-brand-100/20 dark:bg-brand-900/10 text-brand-600 dark:text-brand-400'
         : 'text-gray-700 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400'
         }`}

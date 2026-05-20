@@ -28,6 +28,12 @@ export async function middleware(request: NextRequest) {
       const loginUrl = new URL(Routes.login, request.url)
       return NextResponse.redirect(loginUrl)
     }
+
+    // Protect admin routes: only ADMIN role allowed
+    if (pathname.startsWith('/dashboard/admin') && (token as any)?.role !== 'ADMIN') {
+      const dashboardUrl = new URL(Routes.dashboard, request.url)
+      return NextResponse.redirect(dashboardUrl)
+    }
   }
 
   // If user is authenticated and visiting /app/login or /app/register, redirect to /app/dashboard
