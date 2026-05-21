@@ -57,6 +57,11 @@ export const ApiEndpoints = {
     toggleBan: (id: string) => `/admin/users/${id}/ban`,
     overrideSubscription: (id: string) => `/admin/users/${id}/subscription/override`,
     getUserDevices: (id: string) => `/admin/users/${id}/devices`,
+    createUserDevice: (id: string) => `/admin/users/${id}/devices`,
+    updateDevice: (deviceId: string) => `/admin/devices/${deviceId}`,
     deleteDevice: (deviceId: string) => `/admin/devices/${deviceId}`,
+    listPlans: () => '/admin/plans',
+    upsertPlan: () => '/admin/plans',
+    updatePlan: (id: string) => `/admin/plans/${id}`,
   },
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { ApiEndpoints } from '@/config/api'
@@ -42,13 +42,65 @@ type Device = {
   _id: string
   name?: string
   brand?: string
+  manufacturer?: string
   model?: string
   os?: string
   osVersion?: string
+  fcmToken?: string
+  serial?: string
+  buildId?: string
+  appVersionName?: string
+  appVersionCode?: number
+  receiveSMSEnabled?: boolean
+  smsSendDelaySeconds?: number
   enabled: boolean
   sentSMSCount: number
   lastHeartbeat?: string
   createdAt: string
+}
+
+type Plan = {
+  _id?: string
+  name: string
+  dailyLimit: number
+  monthlyLimit: number
+  bulkSendLimit: number
+  isActive?: boolean
+}
+
+type DeviceFormState = {
+  id?: string
+  name: string
+  brand: string
+  manufacturer: string
+  model: string
+  os: string
+  osVersion: string
+  fcmToken: string
+  serial: string
+  buildId: string
+  appVersionName: string
+  appVersionCode: string
+  smsSendDelaySeconds: string
+  enabled: boolean
+  receiveSMSEnabled: boolean
+}
+
+const emptyDeviceForm: DeviceFormState = {
+  name: '',
+  brand: '',
+  manufacturer: '',
+  model: '',
+  os: 'Android',
+  osVersion: '',
+  fcmToken: '',
+  serial: '',
+  buildId: '',
+  appVersionName: '',
+  appVersionCode: '',
+  smsSendDelaySeconds: '5',
+  enabled: true,
+  receiveSMSEnabled: false,
 }
 
 // ─── Expiry Presets ───────────────────────────────────────────────────────────
@@ -68,15 +120,86 @@ function computeExpiryDate(preset: string, customDate: string): Date | null {
   return null
 }
 
+function extractErrorMessage(error: any, fallback: string) {
+  const data = error?.response?.data
+  if (typeof data?.message === 'string') return data.message
+  if (Array.isArray(data?.message)) return data.message.join(', ')
+  if (typeof data?.error === 'string') return data.error
+  if (typeof error?.message === 'string') return error.message
+  return fallback
+}
+
+function formatLimit(limit?: number) {
+  if (limit === -1) return 'Unlimited'
+  if (limit === undefined || limit === null) return '-'
+  return limit.toLocaleString()
+}
+
+function getPlanTone(planName: string) {
+  if (planName === 'pro') return 'bg-amber-500 border-amber-500 text-white'
+  if (planName.startsWith('custom')) return 'bg-purple-600 border-purple-600 text-white'
+  return 'bg-gray-600 border-gray-600 text-white'
+}
+
+function toDeviceForm(device: Device): DeviceFormState {
+  return {
+    id: device._id,
+    name: device.name ?? '',
+    brand: device.brand ?? '',
+    manufacturer: device.manufacturer ?? '',
+    model: device.model ?? '',
+    os: device.os ?? 'Android',
+    osVersion: device.osVersion ?? '',
+    fcmToken: device.fcmToken ?? '',
+    serial: device.serial ?? '',
+    buildId: device.buildId ?? '',
+    appVersionName: device.appVersionName ?? '',
+    appVersionCode: device.appVersionCode?.toString() ?? '',
+    smsSendDelaySeconds: device.smsSendDelaySeconds?.toString() ?? '5',
+    enabled: device.enabled,
+    receiveSMSEnabled: device.receiveSMSEnabled ?? false,
+  }
+}
+
+function buildDevicePayload(form: DeviceFormState) {
+  return {
+    name: form.name || undefined,
+    brand: form.brand || undefined,
+    manufacturer: form.manufacturer || undefined,
+    model: form.model || undefined,
+    os: form.os || undefined,
+    osVersion: form.osVersion || undefined,
+    fcmToken: form.fcmToken || undefined,
+    serial: form.serial || undefined,
+    buildId: form.buildId || undefined,
+    appVersionName: form.appVersionName || undefined,
+    appVersionCode: form.appVersionCode !== '' ? Number(form.appVersionCode) : undefined,
+    smsSendDelaySeconds: form.smsSendDelaySeconds !== '' ? Number(form.smsSendDelaySeconds) : undefined,
+    enabled: form.enabled,
+    receiveSMSEnabled: form.receiveSMSEnabled,
+  }
+}
+
 // ─── Device Card ──────────────────────────────────────────────────────────────
-function DeviceCard({ device, onDelete }: { device: Device; onDelete: (id: string) => void }) {
+function DeviceCard({
+  device,
+  onDelete,
+  onEdit,
+}: {
+  device: Device
+  onDelete: (id: string) => void
+  onEdit: (device: Device) => void
+}) {
   const [deleting, setDeleting] = useState(false)
 
   const handleDelete = async () => {
     if (!confirm(`Delete device "${device.name || device.model || device._id}"?`)) return
     setDeleting(true)
-    await onDelete(device._id)
-    setDeleting(false)
+    try {
+      await onDelete(device._id)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -94,14 +217,22 @@ function DeviceCard({ device, onDelete }: { device: Device; onDelete: (id: strin
           </p>
         </div>
       </div>
-      <button
-        onClick={handleDelete}
-        disabled={deleting}
-        className='flex-shrink-0 flex items-center gap-1 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-2.5 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50 transition-colors'
-      >
-        {deleting ? <Loader2 className='h-3 w-3 animate-spin' /> : <Trash2 className='h-3 w-3' />}
-        Delete
-      </button>
+      <div className='flex flex-shrink-0 items-center gap-2'>
+        <button
+          onClick={() => onEdit(device)}
+          className='rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+        >
+          Edit
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className='flex items-center gap-1 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-2.5 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50 transition-colors'
+        >
+          {deleting ? <Loader2 className='h-3 w-3 animate-spin' /> : <Trash2 className='h-3 w-3' />}
+          Delete
+        </button>
+      </div>
     </div>
   )
 }
@@ -134,23 +265,43 @@ export default function UserManagementModal({
   const [notes, setNotes] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [deviceForm, setDeviceForm] = useState<DeviceFormState>(emptyDeviceForm)
 
   // Fetch plans to auto-populate limits
-  const { data: plansData } = useQuery({
+  const { data: plansData, isLoading: plansLoading } = useQuery({
     queryKey: ['adminPlans'],
     queryFn: () => httpBrowserClient.get(ApiEndpoints.billing.plans()).then((r) => r.data),
   })
-  const plans: any[] = Array.isArray(plansData) ? plansData : []
+  const plans = useMemo<Plan[]>(() => {
+    const rawPlans = Array.isArray(plansData?.data)
+      ? plansData.data
+      : Array.isArray(plansData)
+      ? plansData
+      : []
+
+    return rawPlans
+      .filter((plan: Plan) => plan?.name)
+      .sort((a: Plan, b: Plan) => {
+        const order = ['free', 'pro', 'custom']
+        const aIndex = order.indexOf(a.name)
+        const bIndex = order.indexOf(b.name)
+        return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex)
+      })
+  }, [plansData])
+
+  const selectedPlan = plans.find((plan) => plan.name === planName)
+  const hasAvailablePlans = plans.length > 0
+  const planExists = Boolean(selectedPlan)
+  const isCustomDateMissing = expiryPreset === 'custom' && !customDate
 
   // Auto-populate limits when plan changes
   useEffect(() => {
-    const plan = plans.find((p: any) => p.name === planName)
-    if (plan) {
-      setCustomDailyLimit(plan.dailyLimit?.toString() ?? '')
-      setCustomMonthlyLimit(plan.monthlyLimit?.toString() ?? '')
-      setCustomBulkSendLimit(plan.bulkSendLimit?.toString() ?? '')
+    if (selectedPlan) {
+      setCustomDailyLimit(selectedPlan.dailyLimit?.toString() ?? '')
+      setCustomMonthlyLimit(selectedPlan.monthlyLimit?.toString() ?? '')
+      setCustomBulkSendLimit(selectedPlan.bulkSendLimit?.toString() ?? '')
     }
-  }, [planName, plans])
+  }, [selectedPlan])
 
   // Fetch user devices
   const {
@@ -167,13 +318,13 @@ export default function UserManagementModal({
   const roleMutation = useMutation({
     mutationFn: () => httpBrowserClient.patch(ApiEndpoints.admin.updateRole(user._id), { role }),
     onSuccess: () => showSuccess('Role updated successfully'),
-    onError: () => showError('Failed to update role'),
+    onError: (error) => showError(extractErrorMessage(error, 'Failed to update role')),
   })
 
   const banMutation = useMutation({
     mutationFn: () => httpBrowserClient.patch(ApiEndpoints.admin.toggleBan(user._id), { isBanned }),
     onSuccess: () => showSuccess(isBanned ? 'User banned' : 'User unbanned'),
-    onError: () => showError('Failed to update ban status'),
+    onError: (error) => showError(extractErrorMessage(error, 'Failed to update ban status')),
   })
 
   const subscriptionMutation = useMutation({
@@ -189,14 +340,30 @@ export default function UserManagementModal({
       })
     },
     onSuccess: () => showSuccess('Subscription updated successfully'),
-    onError: () => showError('Failed to update subscription'),
+    onError: (error) => showError(extractErrorMessage(error, 'Failed to update subscription')),
   })
 
   const deleteDeviceMutation = useMutation({
     mutationFn: (deviceId: string) =>
       httpBrowserClient.delete(ApiEndpoints.admin.deleteDevice(deviceId)),
     onSuccess: () => { showSuccess('Device deleted'); refetchDevices() },
-    onError: () => showError('Failed to delete device'),
+    onError: (error) => showError(extractErrorMessage(error, 'Failed to delete device')),
+  })
+
+  const saveDeviceMutation = useMutation({
+    mutationFn: () => {
+      const payload = buildDevicePayload(deviceForm)
+      if (deviceForm.id) {
+        return httpBrowserClient.patch(ApiEndpoints.admin.updateDevice(deviceForm.id), payload)
+      }
+      return httpBrowserClient.post(ApiEndpoints.admin.createUserDevice(user._id), payload)
+    },
+    onSuccess: () => {
+      showSuccess(deviceForm.id ? 'Device updated' : 'Device added')
+      setDeviceForm(emptyDeviceForm)
+      refetchDevices()
+    },
+    onError: (error) => showError(extractErrorMessage(error, 'Failed to save device')),
   })
 
   const showSuccess = (msg: string) => { setSuccessMsg(msg); setErrorMsg(''); setTimeout(() => setSuccessMsg(''), 3000) }
@@ -204,6 +371,14 @@ export default function UserManagementModal({
 
   const handleSaveAll = async () => {
     setErrorMsg('')
+    if (!planExists) {
+      showError(`Plan "${planName}" is not available. Add it in billing plans first.`)
+      return
+    }
+    if (isCustomDateMissing) {
+      showError('Choose a custom subscription expiry date before saving.')
+      return
+    }
     try {
       await roleMutation.mutateAsync()
       await banMutation.mutateAsync()
@@ -216,6 +391,10 @@ export default function UserManagementModal({
 
   const isLoading =
     roleMutation.isPending || banMutation.isPending || subscriptionMutation.isPending
+  const saveDisabled = isLoading || plansLoading || !planExists || isCustomDateMissing
+  const deviceSaveDisabled =
+    saveDeviceMutation.isPending ||
+    (!deviceForm.name.trim() && !deviceForm.model.trim())
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm'>
@@ -320,25 +499,51 @@ export default function UserManagementModal({
             <div className='space-y-1.5'>
               <label className='text-xs font-medium text-gray-600 dark:text-gray-400'>Plan</label>
               <div className='flex gap-2 flex-wrap'>
-                {['free', 'pro', 'custom'].map((p) => (
+                {(hasAvailablePlans ? plans.map((plan) => plan.name) : [planName]).map((p) => (
                   <button
                     key={p}
                     onClick={() => setPlanName(p)}
                     className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors capitalize ${
                       planName === p
-                        ? p === 'pro'
-                          ? 'bg-amber-500 border-amber-500 text-white'
-                          : p === 'custom'
-                          ? 'bg-purple-600 border-purple-600 text-white'
-                          : 'bg-gray-600 border-gray-600 text-white'
+                        ? getPlanTone(p)
                         : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
                     }`}
                   >
-                    {p === 'pro' && '⭐ '}
                     {p.charAt(0).toUpperCase() + p.slice(1)}
                   </button>
                 ))}
               </div>
+              {plansLoading && (
+                <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  Loading billing plans...
+                </p>
+              )}
+              {!plansLoading && !hasAvailablePlans && (
+                <p className='text-xs text-amber-600 dark:text-amber-400'>
+                  No billing plans were returned by the API. Check the plans collection before overriding subscriptions.
+                </p>
+              )}
+              {!plansLoading && hasAvailablePlans && !planExists && (
+                <p className='text-xs text-red-600 dark:text-red-400'>
+                  The current plan is not available in billing plans. Add it before saving changes.
+                </p>
+              )}
+              {selectedPlan && (
+                <div className='grid grid-cols-3 gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs dark:border-gray-700 dark:bg-gray-700/40'>
+                  <div>
+                    <p className='text-gray-400'>Daily</p>
+                    <p className='font-semibold text-gray-700 dark:text-gray-200'>{formatLimit(selectedPlan.dailyLimit)}</p>
+                  </div>
+                  <div>
+                    <p className='text-gray-400'>Monthly</p>
+                    <p className='font-semibold text-gray-700 dark:text-gray-200'>{formatLimit(selectedPlan.monthlyLimit)}</p>
+                  </div>
+                  <div>
+                    <p className='text-gray-400'>Bulk</p>
+                    <p className='font-semibold text-gray-700 dark:text-gray-200'>{formatLimit(selectedPlan.bulkSendLimit)}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Expiry */}
@@ -369,6 +574,9 @@ export default function UserManagementModal({
                   min={new Date().toISOString().split('T')[0]}
                   className='mt-2 w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
+              )}
+              {isCustomDateMissing && (
+                <p className='text-xs text-red-600 dark:text-red-400'>Choose a date to use the custom duration.</p>
               )}
             </div>
 
@@ -410,6 +618,78 @@ export default function UserManagementModal({
             <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-b border-gray-100 dark:border-gray-700 pb-2 flex items-center gap-2'>
               <Smartphone className='h-4 w-4 text-blue-500' /> Devices ({devices?.length ?? 0})
             </h3>
+            <div className='rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700/40'>
+              <div className='mb-3 flex items-center justify-between'>
+                <p className='text-sm font-semibold text-gray-800 dark:text-gray-100'>
+                  {deviceForm.id ? 'Edit Device' : 'Add Device'}
+                </p>
+                {deviceForm.id && (
+                  <button
+                    onClick={() => setDeviceForm(emptyDeviceForm)}
+                    className='text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                  >
+                    Add new
+                  </button>
+                )}
+              </div>
+              <div className='grid grid-cols-1 gap-2 sm:grid-cols-2'>
+                {[
+                  ['name', 'Device name'],
+                  ['brand', 'Brand'],
+                  ['model', 'Model'],
+                  ['os', 'OS'],
+                  ['osVersion', 'OS version'],
+                  ['appVersionName', 'App version'],
+                  ['appVersionCode', 'Version code'],
+                  ['smsSendDelaySeconds', 'Send delay seconds'],
+                ].map(([field, placeholder]) => (
+                  <input
+                    key={field}
+                    type={['appVersionCode', 'smsSendDelaySeconds'].includes(field) ? 'number' : 'text'}
+                    value={deviceForm[field as keyof DeviceFormState] as string}
+                    onChange={(e) => setDeviceForm((current) => ({ ...current, [field]: e.target.value }))}
+                    placeholder={placeholder}
+                    className='rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
+                  />
+                ))}
+              </div>
+              <textarea
+                rows={2}
+                value={deviceForm.fcmToken}
+                onChange={(e) => setDeviceForm((current) => ({ ...current, fcmToken: e.target.value }))}
+                placeholder='FCM token'
+                className='mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
+              />
+              <div className='mt-3 flex flex-wrap items-center justify-between gap-3'>
+                <div className='flex flex-wrap items-center gap-4'>
+                  <label className='flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300'>
+                    <input
+                      type='checkbox'
+                      checked={deviceForm.enabled}
+                      onChange={(e) => setDeviceForm((current) => ({ ...current, enabled: e.target.checked }))}
+                      className='h-4 w-4 rounded border-gray-300 text-blue-600'
+                    />
+                    Enabled
+                  </label>
+                  <label className='flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300'>
+                    <input
+                      type='checkbox'
+                      checked={deviceForm.receiveSMSEnabled}
+                      onChange={(e) => setDeviceForm((current) => ({ ...current, receiveSMSEnabled: e.target.checked }))}
+                      className='h-4 w-4 rounded border-gray-300 text-blue-600'
+                    />
+                    Receive SMS
+                  </label>
+                </div>
+                <button
+                  onClick={() => saveDeviceMutation.mutate()}
+                  disabled={deviceSaveDisabled}
+                  className='rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60'
+                >
+                  {saveDeviceMutation.isPending ? 'Saving...' : deviceForm.id ? 'Save Device' : 'Add Device'}
+                </button>
+              </div>
+            </div>
             {devicesLoading ? (
               <div className='flex items-center justify-center py-6'>
                 <Loader2 className='h-6 w-6 animate-spin text-gray-400' />
@@ -422,6 +702,7 @@ export default function UserManagementModal({
                   <DeviceCard
                     key={device._id}
                     device={device}
+                    onEdit={(selectedDevice) => setDeviceForm(toDeviceForm(selectedDevice))}
                     onDelete={(id) => deleteDeviceMutation.mutateAsync(id)}
                   />
                 ))}
@@ -440,7 +721,7 @@ export default function UserManagementModal({
           </button>
           <button
             onClick={handleSaveAll}
-            disabled={isLoading}
+            disabled={saveDisabled}
             className='flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-md'
           >
             {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}

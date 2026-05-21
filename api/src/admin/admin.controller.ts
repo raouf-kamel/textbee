@@ -63,6 +63,98 @@ export class AdminController {
     return this.adminService.getUserDevices(id)
   }
 
+  @Get('plans')
+  async getPlans() {
+    return this.adminService.getPlans()
+  }
+
+  @Post('plans')
+  async upsertPlan(
+    @Body()
+    planDto: {
+      name: string
+      dailyLimit: number
+      monthlyLimit: number
+      bulkSendLimit: number
+      monthlyPrice?: number
+      yearlyPrice?: number
+      isActive?: boolean
+      polarProductId?: string
+      polarMonthlyProductId?: string
+      polarYearlyProductId?: string
+    }
+  ) {
+    return this.adminService.upsertPlan(planDto)
+  }
+
+  @Patch('plans/:id')
+  async updatePlan(
+    @Param('id') id: string,
+    @Body()
+    planDto: {
+      name?: string
+      dailyLimit?: number
+      monthlyLimit?: number
+      bulkSendLimit?: number
+      monthlyPrice?: number
+      yearlyPrice?: number
+      isActive?: boolean
+      polarProductId?: string
+      polarMonthlyProductId?: string
+      polarYearlyProductId?: string
+    }
+  ) {
+    return this.adminService.updatePlan(id, planDto)
+  }
+
+  @Post('users/:id/devices')
+  async createUserDevice(
+    @Param('id') id: string,
+    @Body()
+    deviceDto: {
+      name?: string
+      enabled?: boolean
+      fcmToken?: string
+      brand?: string
+      manufacturer?: string
+      model?: string
+      serial?: string
+      buildId?: string
+      os?: string
+      osVersion?: string
+      appVersionName?: string
+      appVersionCode?: number
+      receiveSMSEnabled?: boolean
+      smsSendDelaySeconds?: number
+    }
+  ) {
+    return this.adminService.createUserDevice(id, deviceDto)
+  }
+
+  @Patch('devices/:deviceId')
+  async updateDevice(
+    @Param('deviceId') deviceId: string,
+    @Body()
+    deviceDto: {
+      name?: string
+      enabled?: boolean
+      fcmToken?: string
+      brand?: string
+      manufacturer?: string
+      model?: string
+      serial?: string
+      buildId?: string
+      os?: string
+      osVersion?: string
+      appVersionName?: string
+      appVersionCode?: number
+      receiveSMSEnabled?: boolean
+      smsSendDelaySeconds?: number
+    }
+  ) {
+    return this.adminService.updateDevice(deviceId, deviceDto)
+  }
+
   @Delete('devices/:deviceId')
   async deleteDevice(@Param('deviceId') deviceId: string) {
     return this.adminService.deleteDevice(deviceId)

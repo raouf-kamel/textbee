@@ -7,6 +7,36 @@ import { SMS, SMSDocument } from '../gateway/schemas/sms.schema'
 import { Subscription, SubscriptionDocument } from '../billing/schemas/subscription.schema'
 import { Plan, PlanDocument } from '../billing/schemas/plan.schema'
 
+type AdminPlanInput = {
+  name?: string
+  dailyLimit?: number
+  monthlyLimit?: number
+  bulkSendLimit?: number
+  monthlyPrice?: number
+  yearlyPrice?: number
+  isActive?: boolean
+  polarProductId?: string
+  polarMonthlyProductId?: string
+  polarYearlyProductId?: string
+}
+
+type AdminDeviceInput = {
+  name?: string
+  enabled?: boolean
+  fcmToken?: string
+  brand?: string
+  manufacturer?: string
+  model?: string
+  serial?: string
+  buildId?: string
+  os?: string
+  osVersion?: string
+  appVersionName?: string
+  appVersionCode?: number
+  receiveSMSEnabled?: boolean
+  smsSendDelaySeconds?: number
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -214,6 +244,96 @@ export class AdminService {
     return this.deviceModel.find({ user: new Types.ObjectId(userId) }).sort({ createdAt: -1 })
   }
 
+  async getPlans() {
+    return this.planModel.find().sort({ name: 1 })
+  }
+
+  async upsertPlan(planDto: AdminPlanInput) {
+    const name = planDto.name?.trim().toLowerCase()
+    if (!name) {
+      throw new BadRequestException('Plan name is required')
+    }
+
+    const updateData = this.normalizePlanInput({ ...planDto, name }, true)
+    const plan = await this.planModel.findOneAndUpdate(
+      { name },
+      updateData,
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    )
+
+    return { success: true, plan }
+  }
+
+  async updatePlan(planId: string, planDto: AdminPlanInput) {
+    if (!Types.ObjectId.isValid(planId)) {
+      throw new BadRequestException('Invalid Plan ID')
+    }
+
+    const updateData = this.normalizePlanInput(planDto, false)
+    const plan = await this.planModel.findByIdAndUpdate(
+      new Types.ObjectId(planId),
+      updateData,
+      { new: true }
+    )
+
+    if (!plan) {
+      throw new NotFoundException('Plan not found')
+    }
+
+    return { success: true, plan }
+  }
+
+  async createUserDevice(userId: string, deviceDto: AdminDeviceInput) {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid User ID')
+    }
+
+    const userObjectId = new Types.ObjectId(userId)
+    const user = await this.userModel.findById(userObjectId)
+    if (!user) {
+      throw new NotFoundException('User not found')
+    }
+
+    const deviceData = this.normalizeDeviceInput(deviceDto)
+    if (!deviceData.name && !deviceData.model) {
+      throw new BadRequestException('Device name or model is required')
+    }
+
+    const device = await this.deviceModel.create({
+      ...deviceData,
+      user: userObjectId,
+      enabled: deviceData.enabled ?? true,
+      brand: deviceData.brand ?? 'Manual',
+      model: deviceData.model ?? deviceData.name ?? 'Manual Device',
+      buildId: deviceData.buildId ?? `manual-${Date.now()}`,
+      os: deviceData.os ?? 'Android',
+      appVersionCode: deviceData.appVersionCode ?? 0,
+      sentSMSCount: 0,
+      receivedSMSCount: 0,
+    })
+
+    return { success: true, device }
+  }
+
+  async updateDevice(deviceId: string, deviceDto: AdminDeviceInput) {
+    if (!Types.ObjectId.isValid(deviceId)) {
+      throw new BadRequestException('Invalid Device ID')
+    }
+
+    const updateData = this.normalizeDeviceInput(deviceDto)
+    const device = await this.deviceModel.findByIdAndUpdate(
+      new Types.ObjectId(deviceId),
+      { $set: updateData },
+      { new: true }
+    )
+
+    if (!device) {
+      throw new NotFoundException('Device not found')
+    }
+
+    return { success: true, device }
+  }
+
   async deleteDevice(deviceId: string) {
     if (!Types.ObjectId.isValid(deviceId)) {
       throw new BadRequestException('Invalid Device ID')
@@ -225,5 +345,95 @@ export class AdminService {
     }
 
     return { success: true }
+  }
+
+  private normalizePlanInput(planDto: AdminPlanInput, requireLimits: boolean) {
+    const updateData: any = {}
+
+    if (planDto.name !== undefined) {
+      const name = planDto.name.trim().toLowerCase()
+      if (!name) throw new BadRequestException('Plan name is required')
+      updateData.name = name
+    }
+
+    ;(['dailyLimit', 'monthlyLimit', 'bulkSendLimit'] as const).forEach((field) => {
+      if (planDto[field] === undefined) {
+        if (requireLimits) throw new BadRequestException(`${field} is required`)
+        return
+      }
+      updateData[field] = this.parseNumber(planDto[field], field)
+    })
+
+    ;(['monthlyPrice', 'yearlyPrice'] as const).forEach((field) => {
+      if (planDto[field] !== undefined) {
+        updateData[field] = this.parseNumber(planDto[field], field)
+      } else if (requireLimits) {
+        updateData[field] = 0
+      }
+    })
+
+    if (planDto.isActive !== undefined) updateData.isActive = Boolean(planDto.isActive)
+    ;(['polarProductId', 'polarMonthlyProductId', 'polarYearlyProductId'] as const).forEach((field) => {
+      if (planDto[field] !== undefined) {
+        const value = planDto[field]?.trim()
+        updateData[field] = value || undefined
+      }
+    })
+
+    if (requireLimits && updateData.name) {
+      updateData.polarProductId ??= `manual-${updateData.name}`
+      updateData.polarMonthlyProductId ??= `manual-${updateData.name}-monthly`
+      updateData.polarYearlyProductId ??= `manual-${updateData.name}-yearly`
+    }
+
+    return updateData
+  }
+
+  private normalizeDeviceInput(deviceDto: AdminDeviceInput) {
+    const updateData: any = {}
+    const stringFields: Array<keyof AdminDeviceInput> = [
+      'name',
+      'fcmToken',
+      'brand',
+      'manufacturer',
+      'model',
+      'serial',
+      'buildId',
+      'os',
+      'osVersion',
+      'appVersionName',
+    ]
+
+    stringFields.forEach((field) => {
+      if (deviceDto[field] !== undefined) {
+        const value = String(deviceDto[field] ?? '').trim()
+        updateData[field] = value || undefined
+      }
+    })
+
+    if (deviceDto.enabled !== undefined) updateData.enabled = Boolean(deviceDto.enabled)
+    if (deviceDto.receiveSMSEnabled !== undefined) {
+      updateData.receiveSMSEnabled = Boolean(deviceDto.receiveSMSEnabled)
+    }
+    if (deviceDto.appVersionCode !== undefined) {
+      updateData.appVersionCode = this.parseNumber(deviceDto.appVersionCode, 'appVersionCode')
+    }
+    if (deviceDto.smsSendDelaySeconds !== undefined) {
+      updateData.smsSendDelaySeconds = Math.min(
+        3600,
+        Math.max(0, this.parseNumber(deviceDto.smsSendDelaySeconds, 'smsSendDelaySeconds')),
+      )
+    }
+    if (deviceDto.fcmToken !== undefined) updateData.fcmTokenUpdatedAt = new Date()
+
+    return updateData
+  }
+
+  private parseNumber(value: unknown, fieldName: string) {
+    const parsed = Number(value)
+    if (Number.isNaN(parsed)) {
+      throw new BadRequestException(`${fieldName} must be a number`)
+    }
+    return parsed
   }
 }

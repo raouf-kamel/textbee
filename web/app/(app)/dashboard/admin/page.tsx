@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { ApiEndpoints } from '@/config/api'
 import {
@@ -43,6 +43,56 @@ type Stats = {
   totalSMS: number
   activeSubscriptions: number
   planCounts: { free: number; pro: number; custom: number }
+}
+
+type Plan = {
+  _id?: string
+  name: string
+  dailyLimit: number
+  monthlyLimit: number
+  bulkSendLimit: number
+  monthlyPrice?: number
+  yearlyPrice?: number
+  isActive?: boolean
+  polarProductId?: string
+  polarMonthlyProductId?: string
+  polarYearlyProductId?: string
+}
+
+type PlanFormState = {
+  id?: string
+  name: string
+  dailyLimit: string
+  monthlyLimit: string
+  bulkSendLimit: string
+  monthlyPrice: string
+  yearlyPrice: string
+  isActive: boolean
+}
+
+const emptyPlanForm: PlanFormState = {
+  name: '',
+  dailyLimit: '',
+  monthlyLimit: '',
+  bulkSendLimit: '',
+  monthlyPrice: '0',
+  yearlyPrice: '0',
+  isActive: true,
+}
+
+function extractErrorMessage(error: any, fallback: string) {
+  const data = error?.response?.data
+  if (typeof data?.message === 'string') return data.message
+  if (Array.isArray(data?.message)) return data.message.join(', ')
+  if (typeof data?.error === 'string') return data.error
+  if (typeof error?.message === 'string') return error.message
+  return fallback
+}
+
+function formatLimit(limit?: number) {
+  if (limit === -1) return 'Unlimited'
+  if (limit === undefined || limit === null) return '-'
+  return limit.toLocaleString()
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -126,6 +176,202 @@ function RoleBadge({ role }: { role: string }) {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
+function PlanManagementSection() {
+  const [form, setForm] = useState<PlanFormState>(emptyPlanForm)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+
+  const {
+    data: plans = [],
+    isLoading,
+    refetch,
+  } = useQuery<Plan[]>({
+    queryKey: ['adminPlansManagement'],
+    queryFn: () => httpBrowserClient.get(ApiEndpoints.admin.listPlans()).then((r) => r.data),
+  })
+
+  const savePlanMutation = useMutation({
+    mutationFn: () => {
+      const payload = {
+        name: form.name.trim().toLowerCase(),
+        dailyLimit: Number(form.dailyLimit),
+        monthlyLimit: Number(form.monthlyLimit),
+        bulkSendLimit: Number(form.bulkSendLimit),
+        monthlyPrice: Number(form.monthlyPrice || 0),
+        yearlyPrice: Number(form.yearlyPrice || 0),
+        isActive: form.isActive,
+      }
+
+      if (form.id) {
+        return httpBrowserClient.patch(ApiEndpoints.admin.updatePlan(form.id), payload)
+      }
+
+      return httpBrowserClient.post(ApiEndpoints.admin.upsertPlan(), payload)
+    },
+    onSuccess: () => {
+      setMessage(form.id ? 'Plan updated successfully' : 'Plan created successfully')
+      setError('')
+      setForm(emptyPlanForm)
+      refetch()
+      setTimeout(() => setMessage(''), 3000)
+    },
+    onError: (err) => {
+      setError(extractErrorMessage(err, 'Failed to save plan'))
+      setMessage('')
+    },
+  })
+
+  const editPlan = (plan: Plan) => {
+    setForm({
+      id: plan._id,
+      name: plan.name,
+      dailyLimit: String(plan.dailyLimit ?? ''),
+      monthlyLimit: String(plan.monthlyLimit ?? ''),
+      bulkSendLimit: String(plan.bulkSendLimit ?? ''),
+      monthlyPrice: String(plan.monthlyPrice ?? 0),
+      yearlyPrice: String(plan.yearlyPrice ?? 0),
+      isActive: plan.isActive ?? true,
+    })
+    setMessage('')
+    setError('')
+  }
+
+  const saveDisabled =
+    savePlanMutation.isPending ||
+    !form.name.trim() ||
+    form.dailyLimit === '' ||
+    form.monthlyLimit === '' ||
+    form.bulkSendLimit === ''
+
+  return (
+    <div className='rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
+      <div className='flex flex-col gap-1 border-b border-gray-200 dark:border-gray-700 px-5 py-4'>
+        <h2 className='text-base font-semibold text-gray-900 dark:text-white'>Billing Plans</h2>
+        <p className='text-xs text-gray-500 dark:text-gray-400'>Create and update plan limits without editing Mongo manually.</p>
+      </div>
+
+      <div className='grid gap-4 p-5 lg:grid-cols-[1fr_360px]'>
+        <div className='overflow-x-auto'>
+          <table className='w-full text-sm'>
+            <thead>
+              <tr className='border-b border-gray-100 dark:border-gray-700'>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Plan</th>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Daily</th>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Monthly</th>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Bulk</th>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Status</th>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Action</th>
+              </tr>
+            </thead>
+            <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className='px-3 py-6 text-center text-gray-400'>Loading plans...</td>
+                </tr>
+              ) : plans.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className='px-3 py-6 text-center text-gray-400'>No plans found</td>
+                </tr>
+              ) : (
+                plans.map((plan) => (
+                  <tr key={plan._id ?? plan.name}>
+                    <td className='px-3 py-2 font-medium capitalize text-gray-900 dark:text-white'>{plan.name}</td>
+                    <td className='px-3 py-2 text-gray-600 dark:text-gray-300'>{formatLimit(plan.dailyLimit)}</td>
+                    <td className='px-3 py-2 text-gray-600 dark:text-gray-300'>{formatLimit(plan.monthlyLimit)}</td>
+                    <td className='px-3 py-2 text-gray-600 dark:text-gray-300'>{formatLimit(plan.bulkSendLimit)}</td>
+                    <td className='px-3 py-2'>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${plan.isActive === false ? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'}`}>
+                        {plan.isActive === false ? 'Inactive' : 'Active'}
+                      </span>
+                    </td>
+                    <td className='px-3 py-2'>
+                      <button
+                        onClick={() => editPlan(plan)}
+                        className='rounded-lg border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-300'
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className='rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/30'>
+          <div className='mb-3 flex items-center justify-between'>
+            <h3 className='text-sm font-semibold text-gray-900 dark:text-white'>{form.id ? 'Edit Plan' : 'New Plan'}</h3>
+            {form.id && (
+              <button onClick={() => setForm(emptyPlanForm)} className='text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'>New</button>
+            )}
+          </div>
+          <div className='space-y-3'>
+            <input
+              value={form.name}
+              onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
+              placeholder='Plan name'
+              className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
+            />
+            <div className='grid grid-cols-3 gap-2'>
+              {[
+                ['dailyLimit', 'Daily'],
+                ['monthlyLimit', 'Monthly'],
+                ['bulkSendLimit', 'Bulk'],
+              ].map(([field, label]) => (
+                <div key={field}>
+                  <label className='text-xs text-gray-500'>{label}</label>
+                  <input
+                    type='number'
+                    value={form[field as keyof PlanFormState] as string}
+                    onChange={(e) => setForm((current) => ({ ...current, [field]: e.target.value }))}
+                    placeholder='-1'
+                    className='mt-1 w-full rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
+                  />
+                </div>
+              ))}
+            </div>
+            <div className='grid grid-cols-2 gap-2'>
+              <input
+                type='number'
+                value={form.monthlyPrice}
+                onChange={(e) => setForm((current) => ({ ...current, monthlyPrice: e.target.value }))}
+                placeholder='Monthly price'
+                className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
+              />
+              <input
+                type='number'
+                value={form.yearlyPrice}
+                onChange={(e) => setForm((current) => ({ ...current, yearlyPrice: e.target.value }))}
+                placeholder='Yearly price'
+                className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
+              />
+            </div>
+            <label className='flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300'>
+              <input
+                type='checkbox'
+                checked={form.isActive}
+                onChange={(e) => setForm((current) => ({ ...current, isActive: e.target.checked }))}
+                className='h-4 w-4 rounded border-gray-300 text-purple-600'
+              />
+              Active plan
+            </label>
+            {message && <p className='rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-900/20 dark:text-green-300'>{message}</p>}
+            {error && <p className='rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-300'>{error}</p>}
+            <button
+              onClick={() => savePlanMutation.mutate()}
+              disabled={saveDisabled}
+              className='w-full rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60'
+            >
+              {savePlanMutation.isPending ? 'Saving...' : form.id ? 'Save Plan' : 'Create Plan'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -218,6 +464,8 @@ export default function AdminPage() {
           sub={`${stats?.planCounts?.free ?? 0} Free plans`}
         />
       </div>
+
+      <PlanManagementSection />
 
       {/* Users Table */}
       <div className='rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
