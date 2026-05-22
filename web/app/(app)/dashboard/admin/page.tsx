@@ -50,6 +50,8 @@ type Stats = {
   planCounts: { free: number; pro: number; custom: number }
 }
 
+type AdminTab = 'overview' | 'users' | 'devices' | 'billing'
+
 type DeviceMonitoringDevice = {
   _id: string
   name?: string
@@ -426,6 +428,29 @@ function DeviceMonitoringSection() {
   )
 }
 
+function OverviewSection({ stats, isLoading }: { stats?: Stats; isLoading: boolean }) {
+  return (
+    <div className='rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
+      <div className='border-b border-gray-200 px-5 py-4 dark:border-gray-700'>
+        <h2 className='text-base font-semibold text-gray-900 dark:text-white'>Overview</h2>
+        <p className='text-xs text-gray-500 dark:text-gray-400'>System snapshot and active plan distribution.</p>
+      </div>
+      <div className='grid gap-4 p-5 md:grid-cols-3'>
+        {[
+          ['Free Plans', stats?.planCounts?.free ?? 0, 'bg-gray-50 text-gray-700 dark:bg-gray-700/40 dark:text-gray-200'],
+          ['Pro Plans', stats?.planCounts?.pro ?? 0, 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'],
+          ['Custom Plans', stats?.planCounts?.custom ?? 0, 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300'],
+        ].map(([label, value, tone]) => (
+          <div key={label} className={`rounded-xl border border-gray-200 p-4 dark:border-gray-700 ${tone}`}>
+            <p className='text-xs font-semibold uppercase'>{label}</p>
+            <p className='mt-2 text-2xl font-bold'>{isLoading ? '...' : Number(value).toLocaleString()}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function PlanManagementSection() {
   const [form, setForm] = useState<PlanFormState>(emptyPlanForm)
   const [message, setMessage] = useState('')
@@ -627,6 +652,7 @@ export default function AdminPage() {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [activeTab, setActiveTab] = useState<AdminTab>('users')
   const LIMIT = 10
 
   // Stats query
@@ -667,6 +693,12 @@ export default function AdminPage() {
   const users: User[] = usersData?.users ?? []
   const totalPages: number = usersData?.totalPages ?? 1
   const totalUsers: number = usersData?.totalUsers ?? 0
+  const tabs: Array<{ key: AdminTab; label: string; icon: React.ReactNode }> = [
+    { key: 'overview', label: 'Overview', icon: <Activity className='h-4 w-4' /> },
+    { key: 'users', label: 'Users', icon: <Users className='h-4 w-4' /> },
+    { key: 'devices', label: 'Devices', icon: <Smartphone className='h-4 w-4' /> },
+    { key: 'billing', label: 'Billing', icon: <Crown className='h-4 w-4' /> },
+  ]
 
   return (
     <div className='space-y-6'>
@@ -715,12 +747,33 @@ export default function AdminPage() {
         />
       </div>
 
-      <DeviceMonitoringSection />
+      <div className='rounded-2xl border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-700 dark:bg-gray-800'>
+        <div className='grid gap-1 sm:grid-cols-4'>
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                activeTab === tab.key
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      <PlanManagementSection />
+      {activeTab === 'overview' && <OverviewSection stats={stats} isLoading={statsLoading} />}
+
+      {activeTab === 'devices' && <DeviceMonitoringSection />}
+
+      {activeTab === 'billing' && <PlanManagementSection />}
 
       {/* Users Table */}
-      <div className='rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
+      {activeTab === 'users' && <div className='rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
         {/* Table Header */}
         <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-200 dark:border-gray-700 px-5 py-4'>
           <div>
@@ -871,7 +924,7 @@ export default function AdminPage() {
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* User Management Modal */}
       {selectedUser && (
