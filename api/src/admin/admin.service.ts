@@ -102,6 +102,18 @@ export class AdminService {
       .limit(limit)
       .lean()
 
+    const userIds = users.map((user: any) => user._id)
+    const smsCounts = await this.smsModel.aggregate([
+      { $match: { user: { $in: userIds } } },
+      { $group: { _id: '$user', count: { $sum: 1 } } },
+    ])
+    const smsCountByUserId = new Map(
+      smsCounts.map((item: { _id: Types.ObjectId; count: number }) => [
+        item._id.toString(),
+        item.count,
+      ]),
+    )
+
     const usersWithDetails = await Promise.all(
       users.map(async (user: any) => {
         // Fetch active subscription for user
@@ -123,6 +135,7 @@ export class AdminService {
             status: 'active',
           },
           devicesCount,
+          smsCount: smsCountByUserId.get(user._id.toString()) ?? 0,
         }
       })
     )
@@ -242,6 +255,50 @@ export class AdminService {
     }
 
     return this.deviceModel.find({ user: new Types.ObjectId(userId) }).sort({ createdAt: -1 })
+  }
+
+  async getUserMessages(
+    userId: string,
+    query: { page?: number; limit?: number; type?: string },
+  ) {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid User ID')
+    }
+
+    const page = Math.max(1, Number(query.page || 1))
+    const limit = Math.min(100, Math.max(1, Number(query.limit || 20)))
+    const skip = (page - 1) * limit
+    const messageQuery: any = { user: new Types.ObjectId(userId) }
+
+    if (query.type === 'sent') {
+      messageQuery.type = 'SENT'
+    } else if (query.type === 'received') {
+      messageQuery.type = 'RECEIVED'
+    }
+
+    const [total, data] = await Promise.all([
+      this.smsModel.countDocuments(messageQuery),
+      this.smsModel
+        .find(messageQuery)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate({
+          path: 'device',
+          select: '_id name brand model buildId enabled',
+        })
+        .lean(),
+    ])
+
+    return {
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+      data,
+    }
   }
 
   async getPlans() {

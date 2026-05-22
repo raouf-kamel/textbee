@@ -63,6 +63,16 @@ export class AdminController {
     return this.adminService.getUserDevices(id)
   }
 
+  @Get('users/:id/messages')
+  async getUserMessages(
+    @Param('id') id: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('type') type?: string,
+  ) {
+    return this.adminService.getUserMessages(id, { page, limit, type })
+  }
+
   @Get('plans')
   async getPlans() {
     return this.adminService.getPlans()

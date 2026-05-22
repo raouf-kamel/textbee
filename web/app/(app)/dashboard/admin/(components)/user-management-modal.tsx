@@ -15,6 +15,9 @@ import {
   AlertTriangle,
   CalendarDays,
   Loader2,
+  MessageSquareText,
+  ArrowUpRight,
+  ArrowDownLeft,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -36,6 +39,7 @@ type User = {
     customBulkSendLimit?: number
   }
   devicesCount: number
+  smsCount: number
 }
 
 type Device = {
@@ -57,6 +61,42 @@ type Device = {
   sentSMSCount: number
   lastHeartbeat?: string
   createdAt: string
+}
+
+type AdminMessage = {
+  _id: string
+  type: 'SENT' | 'RECEIVED'
+  message?: string
+  recipient?: string
+  sender?: string
+  status?: string
+  requestedAt?: string
+  receivedAt?: string
+  dispatchedAt?: string
+  sentAt?: string
+  deliveredAt?: string
+  failedAt?: string
+  createdAt?: string
+  errorCode?: string
+  errorMessage?: string
+  device?: {
+    _id: string
+    name?: string
+    brand?: string
+    model?: string
+    buildId?: string
+    enabled?: boolean
+  }
+}
+
+type AdminMessagesResponse = {
+  data: AdminMessage[]
+  meta: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
 }
 
 type Plan = {
@@ -139,6 +179,35 @@ function getPlanTone(planName: string) {
   if (planName === 'pro') return 'bg-amber-500 border-amber-500 text-white'
   if (planName.startsWith('custom')) return 'bg-purple-600 border-purple-600 text-white'
   return 'bg-gray-600 border-gray-600 text-white'
+}
+
+function formatMessageDate(message: AdminMessage) {
+  const timestamp =
+    message.requestedAt ||
+    message.receivedAt ||
+    message.sentAt ||
+    message.deliveredAt ||
+    message.failedAt ||
+    message.createdAt
+
+  if (!timestamp) return '-'
+
+  return new Date(timestamp).toLocaleString()
+}
+
+function getMessageNumber(message: AdminMessage) {
+  return message.type === 'RECEIVED'
+    ? message.sender || '-'
+    : message.recipient || '-'
+}
+
+function getMessageStatusTone(status?: string) {
+  const normalized = status?.toLowerCase() || 'pending'
+  if (normalized === 'delivered') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+  if (normalized === 'sent' || normalized === 'dispatched') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+  if (normalized === 'failed') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+  if (normalized === 'received') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+  return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
 }
 
 function toDeviceForm(device: Device): DeviceFormState {
@@ -266,6 +335,9 @@ export default function UserManagementModal({
   const [successMsg, setSuccessMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [deviceForm, setDeviceForm] = useState<DeviceFormState>(emptyDeviceForm)
+  const [messagePage, setMessagePage] = useState(1)
+  const [messageType, setMessageType] = useState<'all' | 'sent' | 'received'>('all')
+  const MESSAGE_LIMIT = 10
 
   // Fetch plans to auto-populate limits
   const { data: plansData, isLoading: plansLoading } = useQuery({
@@ -312,6 +384,18 @@ export default function UserManagementModal({
     queryKey: ['adminUserDevices', user._id],
     queryFn: () =>
       httpBrowserClient.get(ApiEndpoints.admin.getUserDevices(user._id)).then((r) => r.data),
+  })
+
+  const {
+    data: messagesResponse,
+    isLoading: messagesLoading,
+    refetch: refetchMessages,
+  } = useQuery<AdminMessagesResponse>({
+    queryKey: ['adminUserMessages', user._id, messagePage, messageType],
+    queryFn: () =>
+      httpBrowserClient
+        .get(ApiEndpoints.admin.getUserMessages(user._id, messagePage, MESSAGE_LIMIT, messageType))
+        .then((r) => r.data),
   })
 
   // Mutations
@@ -368,6 +452,13 @@ export default function UserManagementModal({
 
   const showSuccess = (msg: string) => { setSuccessMsg(msg); setErrorMsg(''); setTimeout(() => setSuccessMsg(''), 3000) }
   const showError = (msg: string) => { setErrorMsg(msg); setSuccessMsg('') }
+  const messages = messagesResponse?.data ?? []
+  const messagesMeta = messagesResponse?.meta ?? {
+    page: 1,
+    limit: MESSAGE_LIMIT,
+    total: user.smsCount ?? 0,
+    totalPages: 1,
+  }
 
   const handleSaveAll = async () => {
     setErrorMsg('')
@@ -706,6 +797,123 @@ export default function UserManagementModal({
                     onDelete={(id) => deleteDeviceMutation.mutateAsync(id)}
                   />
                 ))}
+              </div>
+            )}
+          </section>
+
+          <section className='space-y-3'>
+            <div className='flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-2 dark:border-gray-700'>
+              <h3 className='flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300'>
+                <MessageSquareText className='h-4 w-4 text-emerald-500' /> SMS History ({messagesMeta.total})
+              </h3>
+              <div className='flex items-center gap-2'>
+                {(['all', 'sent', 'received'] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setMessageType(type)
+                      setMessagePage(1)
+                    }}
+                    className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium capitalize transition-colors ${
+                      messageType === type
+                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+                <button
+                  onClick={() => refetchMessages()}
+                  className='rounded-lg border border-gray-200 bg-gray-50 p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  title='Refresh messages'
+                >
+                  <Loader2 className={`h-4 w-4 ${messagesLoading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+            </div>
+
+            {messagesLoading ? (
+              <div className='flex items-center justify-center py-6'>
+                <Loader2 className='h-6 w-6 animate-spin text-gray-400' />
+              </div>
+            ) : messages.length === 0 ? (
+              <p className='py-4 text-center text-sm text-gray-400'>No messages found</p>
+            ) : (
+              <div className='overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700'>
+                <table className='w-full min-w-[720px] text-sm'>
+                  <thead className='bg-gray-50 dark:bg-gray-700/40'>
+                    <tr>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Message status</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Date</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Number</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Message</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Delivery status</th>
+                    </tr>
+                  </thead>
+                  <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
+                    {messages.map((message) => {
+                      const isReceived = message.type === 'RECEIVED'
+                      return (
+                        <tr key={message._id}>
+                          <td className='px-3 py-3'>
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              isReceived
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                            }`}>
+                              {isReceived ? <ArrowDownLeft className='h-3 w-3' /> : <ArrowUpRight className='h-3 w-3' />}
+                              {isReceived ? 'Received' : 'Sent'}
+                            </span>
+                          </td>
+                          <td className='px-3 py-3 text-xs text-gray-500 dark:text-gray-400'>
+                            {formatMessageDate(message)}
+                          </td>
+                          <td className='px-3 py-3 font-mono text-xs text-gray-700 dark:text-gray-200'>
+                            {getMessageNumber(message)}
+                          </td>
+                          <td className='max-w-[260px] px-3 py-3 text-gray-700 dark:text-gray-200'>
+                            <p className='line-clamp-2 break-words'>{message.message || '-'}</p>
+                            {(message.errorCode || message.errorMessage) && (
+                              <p className='mt-1 line-clamp-1 text-xs text-red-500'>
+                                {message.errorCode || message.errorMessage}
+                              </p>
+                            )}
+                          </td>
+                          <td className='px-3 py-3'>
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${getMessageStatusTone(message.status)}`}>
+                              {message.status || 'pending'}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {messagesMeta.totalPages > 1 && (
+              <div className='flex items-center justify-between gap-3'>
+                <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  Page {messagesMeta.page} of {messagesMeta.totalPages}
+                </p>
+                <div className='flex items-center gap-2'>
+                  <button
+                    onClick={() => setMessagePage((current) => Math.max(1, current - 1))}
+                    disabled={messagePage === 1}
+                    className='rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+                  >
+                    Prev
+                  </button>
+                  <button
+                    onClick={() => setMessagePage((current) => Math.min(messagesMeta.totalPages, current + 1))}
+                    disabled={messagePage >= messagesMeta.totalPages}
+                    className='rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </section>

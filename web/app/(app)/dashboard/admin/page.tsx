@@ -35,6 +35,7 @@ type User = {
     subscriptionEndDate?: string
   }
   devicesCount: number
+  smsCount: number
 }
 
 type Stats = {
@@ -514,6 +515,7 @@ export default function AdminPage() {
                 <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Role</th>
                 <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Plan</th>
                 <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Devices</th>
+                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Messages</th>
                 <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Joined</th>
                 <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Action</th>
               </tr>
@@ -522,7 +524,7 @@ export default function AdminPage() {
               {usersLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 7 }).map((__, j) => (
+                    {Array.from({ length: 8 }).map((__, j) => (
                       <td key={j} className='px-4 py-3'>
                         <div className='h-4 w-24 rounded bg-gray-200 dark:bg-gray-700 animate-pulse' />
                       </td>
@@ -531,7 +533,7 @@ export default function AdminPage() {
                 ))
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className='px-5 py-12 text-center text-gray-400 dark:text-gray-500'>
+                  <td colSpan={8} className='px-5 py-12 text-center text-gray-400 dark:text-gray-500'>
                     No users found
                   </td>
                 </tr>
@@ -568,6 +570,12 @@ export default function AdminPage() {
                       <span className='flex items-center gap-1'>
                         <Smartphone className='h-3.5 w-3.5 text-gray-400' />
                         {user.devicesCount}
+                      </span>
+                    </td>
+                    <td className='px-4 py-3 text-gray-600 dark:text-gray-300'>
+                      <span className='flex items-center gap-1'>
+                        <MessageSquareText className='h-3.5 w-3.5 text-gray-400' />
+                        {user.smsCount ?? 0}
                       </span>
                     </td>
                     <td className='px-4 py-3 text-xs text-gray-400'>
