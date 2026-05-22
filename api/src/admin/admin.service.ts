@@ -37,6 +37,9 @@ type AdminDeviceInput = {
   smsSendDelaySeconds?: number
 }
 
+const STALE_HEARTBEAT_MINUTES = 30
+const HIGH_PENDING_SMS_THRESHOLD = 5
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -255,6 +258,127 @@ export class AdminService {
     }
 
     return this.deviceModel.find({ user: new Types.ObjectId(userId) }).sort({ createdAt: -1 })
+  }
+
+  async getDeviceMonitoring() {
+    const staleSince = new Date(Date.now() - STALE_HEARTBEAT_MINUTES * 60 * 1000)
+
+    const [devices, pendingCounts] = await Promise.all([
+      this.deviceModel
+        .find()
+        .select(
+          '_id user name brand manufacturer model os osVersion appVersionName appVersionCode appVersionInfo enabled heartbeatEnabled lastHeartbeat sentSMSCount receivedSMSCount fcmTokenInvalidatedAt fcmTokenInvalidReason createdAt',
+        )
+        .populate({ path: 'user', select: '_id name email' })
+        .sort({ lastHeartbeat: 1 })
+        .lean(),
+      this.smsModel.aggregate([
+        {
+          $match: {
+            type: 'SENT',
+            status: { $in: ['pending', 'dispatched'] },
+          },
+        },
+        {
+          $group: {
+            _id: '$device',
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+    ])
+
+    const pendingCountByDeviceId = new Map(
+      pendingCounts.map((item: { _id: Types.ObjectId; count: number }) => [
+        item._id?.toString(),
+        item.count,
+      ]),
+    )
+
+    const monitoredDevices = devices.map((device: any) => {
+      const pendingSMSCount = pendingCountByDeviceId.get(device._id.toString()) ?? 0
+      const lastHeartbeat = device.lastHeartbeat ? new Date(device.lastHeartbeat) : null
+      const isOnline = Boolean(device.enabled && lastHeartbeat && lastHeartbeat >= staleSince)
+      const isStale = Boolean(device.enabled && (!lastHeartbeat || lastHeartbeat < staleSince))
+      const hasHighPendingSMS = pendingSMSCount >= HIGH_PENDING_SMS_THRESHOLD
+
+      return {
+        _id: device._id,
+        name: device.name,
+        brand: device.brand,
+        manufacturer: device.manufacturer,
+        model: device.model,
+        os: device.os,
+        osVersion: device.osVersion,
+        appVersionName: device.appVersionInfo?.versionName ?? device.appVersionName,
+        appVersionCode: device.appVersionInfo?.versionCode ?? device.appVersionCode,
+        enabled: device.enabled,
+        heartbeatEnabled: device.heartbeatEnabled,
+        lastHeartbeat: device.lastHeartbeat,
+        sentSMSCount: device.sentSMSCount ?? 0,
+        receivedSMSCount: device.receivedSMSCount ?? 0,
+        pendingSMSCount,
+        isOnline,
+        isStale,
+        hasHighPendingSMS,
+        fcmTokenInvalidatedAt: device.fcmTokenInvalidatedAt,
+        fcmTokenInvalidReason: device.fcmTokenInvalidReason,
+        user: device.user,
+        createdAt: device.createdAt,
+      }
+    })
+
+    const onlineDevices = monitoredDevices.filter((device) => device.isOnline).length
+    const offlineDevices = monitoredDevices.filter(
+      (device) => device.enabled && !device.isOnline,
+    ).length
+    const disabledDevices = monitoredDevices.filter((device) => !device.enabled).length
+    const staleHeartbeatDevices = monitoredDevices.filter((device) => device.isStale).length
+    const highPendingDevices = monitoredDevices.filter((device) => device.hasHighPendingSMS).length
+    const pendingMessagesTotal = monitoredDevices.reduce(
+      (total, device) => total + device.pendingSMSCount,
+      0,
+    )
+
+    const attentionDevices = monitoredDevices
+      .filter(
+        (device) =>
+          device.isStale ||
+          device.hasHighPendingSMS ||
+          Boolean(device.fcmTokenInvalidatedAt),
+      )
+      .sort((a, b) => {
+        const aScore =
+          (a.isStale ? 1000 : 0) +
+          (a.hasHighPendingSMS ? 500 : 0) +
+          (a.fcmTokenInvalidatedAt ? 250 : 0) +
+          a.pendingSMSCount
+        const bScore =
+          (b.isStale ? 1000 : 0) +
+          (b.hasHighPendingSMS ? 500 : 0) +
+          (b.fcmTokenInvalidatedAt ? 250 : 0) +
+          b.pendingSMSCount
+        return bScore - aScore
+      })
+      .slice(0, 25)
+
+    return {
+      thresholds: {
+        staleHeartbeatMinutes: STALE_HEARTBEAT_MINUTES,
+        highPendingSMS: HIGH_PENDING_SMS_THRESHOLD,
+      },
+      summary: {
+        totalDevices: monitoredDevices.length,
+        enabledDevices: monitoredDevices.length - disabledDevices,
+        disabledDevices,
+        onlineDevices,
+        offlineDevices,
+        staleHeartbeatDevices,
+        highPendingDevices,
+        pendingMessagesTotal,
+      },
+      attentionDevices,
+    }
   }
 
   async getUserMessages(

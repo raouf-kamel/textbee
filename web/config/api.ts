@@ -49,6 +49,7 @@ export const ApiEndpoints = {
   },
   admin: {
     stats: () => '/admin/stats',
+    deviceMonitoring: () => '/admin/devices/monitoring',
     listUsers: (page: number, limit: number, search?: string) => {
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : ''
       return `/admin/users?page=${page}&limit=${limit}${searchParam}`

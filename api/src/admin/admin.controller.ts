@@ -23,6 +23,11 @@ export class AdminController {
     return this.adminService.getStats()
   }
 
+  @Get('devices/monitoring')
+  async getDeviceMonitoring() {
+    return this.adminService.getDeviceMonitoring()
+  }
+
   @Get('users')
   async getUsers(
     @Query('page') page?: number,

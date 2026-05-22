@@ -16,6 +16,10 @@ import {
   ShieldCheck,
   ShieldX,
   CheckCircle2,
+  Wifi,
+  WifiOff,
+  AlertCircle,
+  Activity,
 } from 'lucide-react'
 import UserManagementModal from './(components)/user-management-modal'
 
@@ -44,6 +48,52 @@ type Stats = {
   totalSMS: number
   activeSubscriptions: number
   planCounts: { free: number; pro: number; custom: number }
+}
+
+type DeviceMonitoringDevice = {
+  _id: string
+  name?: string
+  brand?: string
+  manufacturer?: string
+  model?: string
+  os?: string
+  osVersion?: string
+  appVersionName?: string
+  appVersionCode?: number
+  enabled: boolean
+  heartbeatEnabled?: boolean
+  lastHeartbeat?: string
+  sentSMSCount: number
+  receivedSMSCount: number
+  pendingSMSCount: number
+  isOnline: boolean
+  isStale: boolean
+  hasHighPendingSMS: boolean
+  fcmTokenInvalidatedAt?: string
+  fcmTokenInvalidReason?: string
+  user?: {
+    _id: string
+    name?: string
+    email?: string
+  }
+}
+
+type DeviceMonitoring = {
+  thresholds: {
+    staleHeartbeatMinutes: number
+    highPendingSMS: number
+  }
+  summary: {
+    totalDevices: number
+    enabledDevices: number
+    disabledDevices: number
+    onlineDevices: number
+    offlineDevices: number
+    staleHeartbeatDevices: number
+    highPendingDevices: number
+    pendingMessagesTotal: number
+  }
+  attentionDevices: DeviceMonitoringDevice[]
 }
 
 type Plan = {
@@ -94,6 +144,27 @@ function formatLimit(limit?: number) {
   if (limit === -1) return 'Unlimited'
   if (limit === undefined || limit === null) return '-'
   return limit.toLocaleString()
+}
+
+function formatDeviceName(device: DeviceMonitoringDevice) {
+  return device.name || [device.brand, device.model].filter(Boolean).join(' ') || 'Unknown Device'
+}
+
+function formatHeartbeat(timestamp?: string) {
+  if (!timestamp) return 'Never'
+  return new Date(timestamp).toLocaleString()
+}
+
+function formatVersion(device: DeviceMonitoringDevice) {
+  const androidVersion = device.osVersion ? `Android ${device.osVersion}` : device.os || 'Android -'
+  const appVersion = [
+    device.appVersionName ? `v${device.appVersionName}` : null,
+    device.appVersionCode !== undefined && device.appVersionCode !== null
+      ? `(${device.appVersionCode})`
+      : null,
+  ].filter(Boolean).join(' ')
+
+  return `${androidVersion} / ${appVersion || 'App -'}`
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -177,6 +248,184 @@ function RoleBadge({ role }: { role: string }) {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
+function DeviceMonitoringSection() {
+  const {
+    data,
+    isLoading,
+    refetch,
+  } = useQuery<DeviceMonitoring>({
+    queryKey: ['adminDeviceMonitoring'],
+    queryFn: () => httpBrowserClient.get(ApiEndpoints.admin.deviceMonitoring()).then((r) => r.data),
+  })
+
+  const summary = data?.summary
+  const thresholds = data?.thresholds
+  const attentionDevices = data?.attentionDevices ?? []
+
+  return (
+    <div className='rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
+      <div className='flex flex-col gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-700 sm:flex-row sm:items-center sm:justify-between'>
+        <div>
+          <h2 className='text-base font-semibold text-gray-900 dark:text-white'>Device Monitoring</h2>
+          <p className='text-xs text-gray-500 dark:text-gray-400'>
+            Online status, heartbeat freshness, app versions, and pending SMS pressure.
+          </p>
+        </div>
+        <button
+          onClick={() => refetch()}
+          className='flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+        >
+          <RefreshCw className='h-4 w-4' />
+          Refresh Devices
+        </button>
+      </div>
+
+      <div className='space-y-5 p-5'>
+        <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-5'>
+          {[
+            {
+              label: 'Online',
+              value: summary?.onlineDevices ?? 0,
+              icon: <Wifi className='h-4 w-4 text-green-600 dark:text-green-300' />,
+              tone: 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/40',
+            },
+            {
+              label: 'Offline',
+              value: summary?.offlineDevices ?? 0,
+              icon: <WifiOff className='h-4 w-4 text-red-600 dark:text-red-300' />,
+              tone: 'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40',
+            },
+            {
+              label: 'Stale Heartbeat',
+              value: summary?.staleHeartbeatDevices ?? 0,
+              icon: <AlertCircle className='h-4 w-4 text-amber-600 dark:text-amber-300' />,
+              tone: 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/40',
+            },
+            {
+              label: 'High Pending',
+              value: summary?.highPendingDevices ?? 0,
+              icon: <MessageSquareText className='h-4 w-4 text-blue-600 dark:text-blue-300' />,
+              tone: 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/40',
+            },
+            {
+              label: 'Pending SMS',
+              value: summary?.pendingMessagesTotal ?? 0,
+              icon: <Activity className='h-4 w-4 text-purple-600 dark:text-purple-300' />,
+              tone: 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-900/40',
+            },
+          ].map((item) => (
+            <div key={item.label} className={`rounded-xl border p-3 ${item.tone}`}>
+              <div className='flex items-center justify-between gap-3'>
+                <span className='text-xs font-semibold uppercase'>{item.label}</span>
+                {item.icon}
+              </div>
+              <p className='mt-2 text-2xl font-bold'>{isLoading ? '...' : item.value.toLocaleString()}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className='flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400'>
+          <span>{summary?.totalDevices ?? 0} total devices</span>
+          <span>{summary?.enabledDevices ?? 0} enabled</span>
+          <span>{summary?.disabledDevices ?? 0} disabled</span>
+          <span>Stale after {thresholds?.staleHeartbeatMinutes ?? 30} minutes</span>
+          <span>High pending at {thresholds?.highPendingSMS ?? 5}+ SMS</span>
+        </div>
+
+        <div>
+          <div className='mb-3 flex items-center justify-between'>
+            <h3 className='text-sm font-semibold text-gray-800 dark:text-gray-100'>Devices needing attention</h3>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>{attentionDevices.length} shown</span>
+          </div>
+
+          <div className='overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700'>
+            <table className='w-full min-w-[880px] text-sm'>
+              <thead className='bg-gray-50 dark:bg-gray-700/40'>
+                <tr>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Device</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Status</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Last heartbeat</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Versions</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Pending</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>User</th>
+                </tr>
+              </thead>
+              <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
+                {isLoading ? (
+                  Array.from({ length: 4 }).map((_, index) => (
+                    <tr key={index}>
+                      {Array.from({ length: 6 }).map((__, cellIndex) => (
+                        <td key={cellIndex} className='px-3 py-3'>
+                          <div className='h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700' />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : attentionDevices.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className='px-3 py-8 text-center text-gray-400'>
+                      No devices need attention
+                    </td>
+                  </tr>
+                ) : (
+                  attentionDevices.map((device) => (
+                    <tr key={device._id}>
+                      <td className='px-3 py-3'>
+                        <p className='font-medium text-gray-900 dark:text-white'>{formatDeviceName(device)}</p>
+                        <p className='text-xs text-gray-400'>{device.brand || '-'} {device.model || ''}</p>
+                      </td>
+                      <td className='px-3 py-3'>
+                        <div className='flex flex-wrap gap-1.5'>
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            device.isOnline
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                          }`}>
+                            {device.isOnline ? <Wifi className='h-3 w-3' /> : <WifiOff className='h-3 w-3' />}
+                            {device.isOnline ? 'Online' : 'Offline'}
+                          </span>
+                          {device.fcmTokenInvalidatedAt && (
+                            <span className='rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'>
+                              FCM invalid
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className='px-3 py-3 text-xs text-gray-500 dark:text-gray-400'>
+                        {formatHeartbeat(device.lastHeartbeat)}
+                      </td>
+                      <td className='px-3 py-3 text-xs text-gray-600 dark:text-gray-300'>
+                        {formatVersion(device)}
+                      </td>
+                      <td className='px-3 py-3'>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          device.hasHighPendingSMS
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                            : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                        }`}>
+                          {device.pendingSMSCount}
+                        </span>
+                      </td>
+                      <td className='px-3 py-3'>
+                        <p className='max-w-[180px] truncate text-xs font-medium text-gray-700 dark:text-gray-200'>
+                          {device.user?.name || device.user?.email || '-'}
+                        </p>
+                        {device.user?.email && (
+                          <p className='max-w-[180px] truncate text-xs text-gray-400'>{device.user.email}</p>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function PlanManagementSection() {
   const [form, setForm] = useState<PlanFormState>(emptyPlanForm)
   const [message, setMessage] = useState('')
@@ -465,6 +714,8 @@ export default function AdminPage() {
           sub={`${stats?.planCounts?.free ?? 0} Free plans`}
         />
       </div>
+
+      <DeviceMonitoringSection />
 
       <PlanManagementSection />
 
