@@ -90,8 +90,19 @@ export class AdminController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('type') type?: string,
+    @Query('status') status?: string,
   ) {
-    return this.adminService.getUserMessages(id, { page, limit, type })
+    return this.adminService.getUserMessages(id, { page, limit, type, status })
+  }
+
+  @Patch('messages/:messageId/cancel')
+  async cancelMessage(@Param('messageId') messageId: string) {
+    return this.adminService.cancelMessage(messageId)
+  }
+
+  @Delete('messages/:messageId')
+  async deleteMessage(@Param('messageId') messageId: string) {
+    return this.adminService.deleteMessage(messageId)
   }
 
   @Get('plans')

@@ -75,6 +75,16 @@ export class SMS {
     | 'failed'
     | 'unknown'
     | 'received'
+    | 'cancelled'
+
+  @Prop({ type: Date })
+  cancelledAt?: Date
+
+  @Prop({ type: Date })
+  deletedAt?: Date
+
+  @Prop({ type: String })
+  deletedReason?: string
 
   @Prop({ type: Number, required: false })
   simSubscriptionId?: number

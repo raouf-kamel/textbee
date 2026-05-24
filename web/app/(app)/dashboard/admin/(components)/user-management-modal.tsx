@@ -72,6 +72,7 @@ type AdminMessage = {
   recipient?: string
   sender?: string
   status?: string
+  waitingMinutes?: number | null
   requestedAt?: string
   receivedAt?: string
   dispatchedAt?: string
@@ -81,6 +82,8 @@ type AdminMessage = {
   createdAt?: string
   errorCode?: string
   errorMessage?: string
+  cancelledAt?: string
+  deletedAt?: string
   device?: {
     _id: string
     name?: string
@@ -208,8 +211,33 @@ function getMessageStatusTone(status?: string) {
   if (normalized === 'delivered') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
   if (normalized === 'sent' || normalized === 'dispatched') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
   if (normalized === 'failed') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+  if (normalized === 'cancelled') return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
   if (normalized === 'received') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
   return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+}
+
+function formatWaitingTime(waitingMinutes?: number | null) {
+  if (waitingMinutes === null || waitingMinutes === undefined) return '-'
+  if (waitingMinutes < 1) return 'Just now'
+  if (waitingMinutes < 60) return `${waitingMinutes}m waiting`
+  const hours = Math.floor(waitingMinutes / 60)
+  const minutes = waitingMinutes % 60
+  if (hours < 24) return minutes ? `${hours}h ${minutes}m waiting` : `${hours}h waiting`
+  const days = Math.floor(hours / 24)
+  const remainingHours = hours % 24
+  return remainingHours ? `${days}d ${remainingHours}h waiting` : `${days}d waiting`
+}
+
+function getWaitingTone(waitingMinutes?: number | null) {
+  if (waitingMinutes === null || waitingMinutes === undefined) return 'text-gray-400'
+  if (waitingMinutes >= 20) return 'text-red-600 dark:text-red-300'
+  if (waitingMinutes >= 10) return 'text-amber-600 dark:text-amber-300'
+  return 'text-gray-600 dark:text-gray-300'
+}
+
+function canCancelMessage(message: AdminMessage) {
+  const status = message.status?.toLowerCase()
+  return status === 'pending' || status === 'dispatched'
 }
 
 function toDeviceForm(device: Device): DeviceFormState {
@@ -339,6 +367,7 @@ export default function UserManagementModal({
   const [deviceForm, setDeviceForm] = useState<DeviceFormState>(emptyDeviceForm)
   const [messagePage, setMessagePage] = useState(1)
   const [messageType, setMessageType] = useState<'all' | 'sent' | 'received'>('all')
+  const [messageStatus, setMessageStatus] = useState('all')
   const [activeDetailTab, setActiveDetailTab] = useState<UserDetailTab>('overview')
   const MESSAGE_LIMIT = 10
 
@@ -394,10 +423,10 @@ export default function UserManagementModal({
     isLoading: messagesLoading,
     refetch: refetchMessages,
   } = useQuery<AdminMessagesResponse>({
-    queryKey: ['adminUserMessages', user._id, messagePage, messageType],
+    queryKey: ['adminUserMessages', user._id, messagePage, messageType, messageStatus],
     queryFn: () =>
       httpBrowserClient
-        .get(ApiEndpoints.admin.getUserMessages(user._id, messagePage, MESSAGE_LIMIT, messageType))
+        .get(ApiEndpoints.admin.getUserMessages(user._id, messagePage, MESSAGE_LIMIT, messageType, messageStatus))
         .then((r) => r.data),
   })
 
@@ -453,6 +482,26 @@ export default function UserManagementModal({
     onError: (error) => showError(extractErrorMessage(error, 'Failed to save device')),
   })
 
+  const cancelMessageMutation = useMutation({
+    mutationFn: (messageId: string) =>
+      httpBrowserClient.patch(ApiEndpoints.admin.cancelMessage(messageId)),
+    onSuccess: () => {
+      showSuccess('Message cancelled')
+      refetchMessages()
+    },
+    onError: (error) => showError(extractErrorMessage(error, 'Failed to cancel message')),
+  })
+
+  const deleteMessageMutation = useMutation({
+    mutationFn: (messageId: string) =>
+      httpBrowserClient.delete(ApiEndpoints.admin.deleteMessage(messageId)),
+    onSuccess: () => {
+      showSuccess('Message deleted')
+      refetchMessages()
+    },
+    onError: (error) => showError(extractErrorMessage(error, 'Failed to delete message')),
+  })
+
   const showSuccess = (msg: string) => { setSuccessMsg(msg); setErrorMsg(''); setTimeout(() => setSuccessMsg(''), 3000) }
   const showError = (msg: string) => { setErrorMsg(msg); setSuccessMsg('') }
   const messages = messagesResponse?.data ?? []
@@ -481,6 +530,21 @@ export default function UserManagementModal({
     } catch {
       // individual mutation error handlers fire
     }
+  }
+
+  const handleCancelMessage = (message: AdminMessage) => {
+    const warning =
+      message.status?.toLowerCase() === 'dispatched'
+        ? 'This message was already dispatched to the device. Cancellation will be recorded, but device-side delivery may already be in progress. Continue?'
+        : 'Cancel this pending message?'
+
+    if (!confirm(warning)) return
+    cancelMessageMutation.mutate(message._id)
+  }
+
+  const handleDeleteMessage = (message: AdminMessage) => {
+    if (!confirm('Delete this message from the admin history? This will hide it from the dashboard.')) return
+    deleteMessageMutation.mutate(message._id)
   }
 
   const isLoading =
@@ -885,7 +949,7 @@ export default function UserManagementModal({
               <h3 className='flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300'>
                 <MessageSquareText className='h-4 w-4 text-emerald-500' /> SMS History ({messagesMeta.total})
               </h3>
-              <div className='flex items-center gap-2'>
+              <div className='flex flex-wrap items-center gap-2'>
                 {(['all', 'sent', 'received'] as const).map((type) => (
                   <button
                     key={type}
@@ -902,6 +966,24 @@ export default function UserManagementModal({
                     {type}
                   </button>
                 ))}
+                <select
+                  value={messageStatus}
+                  onChange={(e) => {
+                    setMessageStatus(e.target.value)
+                    setMessagePage(1)
+                  }}
+                  className='rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                >
+                  <option value='all'>All statuses</option>
+                  <option value='pending'>Pending</option>
+                  <option value='dispatched'>Dispatched</option>
+                  <option value='sent'>Sent</option>
+                  <option value='delivered'>Delivered</option>
+                  <option value='failed'>Failed</option>
+                  <option value='received'>Received</option>
+                  <option value='unknown'>Unknown</option>
+                  <option value='cancelled'>Cancelled</option>
+                </select>
                 <button
                   onClick={() => refetchMessages()}
                   className='rounded-lg border border-gray-200 bg-gray-50 p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
@@ -920,14 +1002,16 @@ export default function UserManagementModal({
               <p className='py-4 text-center text-sm text-gray-400'>No messages found</p>
             ) : (
               <div className='overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700'>
-                <table className='w-full min-w-[720px] text-sm'>
+                <table className='w-full min-w-[900px] text-sm'>
                   <thead className='bg-gray-50 dark:bg-gray-700/40'>
                     <tr>
                       <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Message status</th>
                       <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Date</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Waiting</th>
                       <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Number</th>
                       <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Message</th>
                       <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Delivery status</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Actions</th>
                     </tr>
                   </thead>
                   <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
@@ -948,6 +1032,9 @@ export default function UserManagementModal({
                           <td className='px-3 py-3 text-xs text-gray-500 dark:text-gray-400'>
                             {formatMessageDate(message)}
                           </td>
+                          <td className={`px-3 py-3 text-xs font-medium ${getWaitingTone(message.waitingMinutes)}`}>
+                            {formatWaitingTime(message.waitingMinutes)}
+                          </td>
                           <td className='px-3 py-3 font-mono text-xs text-gray-700 dark:text-gray-200'>
                             {getMessageNumber(message)}
                           </td>
@@ -963,6 +1050,27 @@ export default function UserManagementModal({
                             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${getMessageStatusTone(message.status)}`}>
                               {message.status || 'pending'}
                             </span>
+                          </td>
+                          <td className='px-3 py-3'>
+                            <div className='flex flex-wrap gap-2'>
+                              {canCancelMessage(message) && (
+                                <button
+                                  onClick={() => handleCancelMessage(message)}
+                                  disabled={cancelMessageMutation.isPending}
+                                  className='rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40'
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteMessage(message)}
+                                disabled={deleteMessageMutation.isPending}
+                                className='inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40'
+                              >
+                                <Trash2 className='h-3 w-3' />
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )

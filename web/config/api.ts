@@ -76,10 +76,13 @@ export const ApiEndpoints = {
     toggleBan: (id: string) => `/admin/users/${id}/ban`,
     overrideSubscription: (id: string) => `/admin/users/${id}/subscription/override`,
     getUserDevices: (id: string) => `/admin/users/${id}/devices`,
-    getUserMessages: (id: string, page: number, limit: number, type?: string) => {
+    getUserMessages: (id: string, page: number, limit: number, type?: string, status?: string) => {
       const typeParam = type && type !== 'all' ? `&type=${encodeURIComponent(type)}` : ''
-      return `/admin/users/${id}/messages?page=${page}&limit=${limit}${typeParam}`
+      const statusParam = status && status !== 'all' ? `&status=${encodeURIComponent(status)}` : ''
+      return `/admin/users/${id}/messages?page=${page}&limit=${limit}${typeParam}${statusParam}`
     },
+    cancelMessage: (messageId: string) => `/admin/messages/${messageId}/cancel`,
+    deleteMessage: (messageId: string) => `/admin/messages/${messageId}`,
     createUserDevice: (id: string) => `/admin/users/${id}/devices`,
     updateDevice: (deviceId: string) => `/admin/devices/${deviceId}`,
     deleteDevice: (deviceId: string) => `/admin/devices/${deviceId}`,

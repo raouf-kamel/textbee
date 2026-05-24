@@ -478,7 +478,7 @@ export class AdminService {
 
   async getUserMessages(
     userId: string,
-    query: { page?: number; limit?: number; type?: string },
+    query: { page?: number; limit?: number; type?: string; status?: string },
   ) {
     if (!Types.ObjectId.isValid(userId)) {
       throw new BadRequestException('Invalid User ID')
@@ -487,12 +487,18 @@ export class AdminService {
     const page = Math.max(1, Number(query.page || 1))
     const limit = Math.min(100, Math.max(1, Number(query.limit || 20)))
     const skip = (page - 1) * limit
-    const messageQuery: any = { user: new Types.ObjectId(userId) }
+    const messageQuery: any = {
+      user: new Types.ObjectId(userId),
+      deletedAt: { $exists: false },
+    }
 
     if (query.type === 'sent') {
       messageQuery.type = 'SENT'
     } else if (query.type === 'received') {
       messageQuery.type = 'RECEIVED'
+    }
+    if (query.status && query.status !== 'all') {
+      messageQuery.status = query.status
     }
 
     const [total, data] = await Promise.all([
@@ -508,6 +514,20 @@ export class AdminService {
         })
         .lean(),
     ])
+    const now = Date.now()
+    const dataWithWaiting = data.map((message: any) => {
+      const status = String(message.status || '').toLowerCase()
+      const waitingFrom = message.requestedAt || message.createdAt
+      const waitingMinutes =
+        ['pending', 'dispatched'].includes(status) && waitingFrom
+          ? Math.max(0, Math.floor((now - new Date(waitingFrom).getTime()) / 60000))
+          : null
+
+      return {
+        ...message,
+        waitingMinutes,
+      }
+    })
 
     return {
       meta: {
@@ -516,8 +536,64 @@ export class AdminService {
         total,
         totalPages: Math.ceil(total / limit),
       },
-      data,
+      data: dataWithWaiting,
     }
+  }
+
+  async cancelMessage(messageId: string) {
+    if (!Types.ObjectId.isValid(messageId)) {
+      throw new BadRequestException('Invalid Message ID')
+    }
+
+    const message = await this.smsModel.findOne({
+      _id: new Types.ObjectId(messageId),
+      deletedAt: { $exists: false },
+    })
+
+    if (!message) {
+      throw new NotFoundException('Message not found')
+    }
+
+    if (!['pending', 'dispatched'].includes(message.status)) {
+      throw new BadRequestException('Only pending or dispatched messages can be cancelled')
+    }
+
+    const previousStatus = message.status
+    message.status = 'cancelled'
+    message.cancelledAt = new Date()
+    message.errorMessage =
+      previousStatus === 'dispatched'
+        ? 'Cancelled by admin after dispatch; device-side delivery may already be in progress.'
+        : 'Cancelled by admin before dispatch.'
+    await message.save()
+
+    return { success: true, message }
+  }
+
+  async deleteMessage(messageId: string) {
+    if (!Types.ObjectId.isValid(messageId)) {
+      throw new BadRequestException('Invalid Message ID')
+    }
+
+    const message = await this.smsModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(messageId),
+        deletedAt: { $exists: false },
+      },
+      {
+        $set: {
+          deletedAt: new Date(),
+          deletedReason: 'Deleted by admin',
+        },
+      },
+      { new: true },
+    )
+
+    if (!message) {
+      throw new NotFoundException('Message not found')
+    }
+
+    return { success: true }
   }
 
   async getPlans() {
