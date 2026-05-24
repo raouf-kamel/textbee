@@ -42,6 +42,8 @@ type User = {
   smsCount: number
 }
 
+type UserDetailTab = 'overview' | 'subscription' | 'devices' | 'messages' | 'admin'
+
 type Device = {
   _id: string
   name?: string
@@ -337,6 +339,7 @@ export default function UserManagementModal({
   const [deviceForm, setDeviceForm] = useState<DeviceFormState>(emptyDeviceForm)
   const [messagePage, setMessagePage] = useState(1)
   const [messageType, setMessageType] = useState<'all' | 'sent' | 'received'>('all')
+  const [activeDetailTab, setActiveDetailTab] = useState<UserDetailTab>('overview')
   const MESSAGE_LIMIT = 10
 
   // Fetch plans to auto-populate limits
@@ -486,12 +489,20 @@ export default function UserManagementModal({
   const deviceSaveDisabled =
     saveDeviceMutation.isPending ||
     (!deviceForm.name.trim() && !deviceForm.model.trim())
+  const detailTabs: Array<{ key: UserDetailTab; label: string; icon: React.ReactNode }> = [
+    { key: 'overview', label: 'Overview', icon: <MessageSquareText className='h-4 w-4' /> },
+    { key: 'subscription', label: 'Subscription', icon: <Crown className='h-4 w-4' /> },
+    { key: 'devices', label: 'Devices', icon: <Smartphone className='h-4 w-4' /> },
+    { key: 'messages', label: 'Messages', icon: <ArrowUpRight className='h-4 w-4' /> },
+    { key: 'admin', label: 'Admin Actions', icon: <ShieldCheck className='h-4 w-4' /> },
+  ]
+  const showAccountSave = activeDetailTab === 'subscription' || activeDetailTab === 'admin'
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm'>
-      <div className='relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700'>
+    <div className='fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm'>
+      <div className='relative flex h-full w-full max-w-5xl flex-col overflow-hidden border-l border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800'>
         {/* Header */}
-        <div className='sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-4 rounded-t-2xl'>
+        <div className='flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800'>
           <div className='flex items-center gap-3'>
             <div className='flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold text-sm flex-shrink-0'>
               {(user.name || user.email)?.[0]?.toUpperCase() ?? '?'}
@@ -509,7 +520,26 @@ export default function UserManagementModal({
           </button>
         </div>
 
-        <div className='p-6 space-y-6'>
+        <div className='border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-900/30'>
+          <div className='grid gap-1 sm:grid-cols-5'>
+            {detailTabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveDetailTab(tab.key)}
+                className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors sm:text-sm ${
+                  activeDetailTab === tab.key
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-white dark:text-gray-300 dark:hover:bg-gray-800'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className='flex-1 overflow-y-auto p-6 space-y-6'>
           {/* Success / Error */}
           {successMsg && (
             <div className='flex items-center gap-2 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 px-4 py-3 text-sm text-green-700 dark:text-green-400'>
@@ -523,7 +553,56 @@ export default function UserManagementModal({
           )}
 
           {/* ── Section 1: Role & Status ─────────────────────────────── */}
-          <section className='space-y-3'>
+          {activeDetailTab === 'overview' && (
+            <section className='space-y-4'>
+              <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+                <div className='rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/40'>
+                  <p className='text-xs font-semibold uppercase text-gray-500'>Role</p>
+                  <p className='mt-2 text-lg font-bold text-gray-900 dark:text-white'>{role === 'ADMIN' ? 'Admin' : 'Regular'}</p>
+                </div>
+                <div className='rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/40'>
+                  <p className='text-xs font-semibold uppercase text-gray-500'>Status</p>
+                  <p className={`mt-2 text-lg font-bold ${isBanned ? 'text-red-600 dark:text-red-300' : 'text-green-600 dark:text-green-300'}`}>
+                    {isBanned ? 'Banned' : 'Active'}
+                  </p>
+                </div>
+                <div className='rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/40'>
+                  <p className='text-xs font-semibold uppercase text-gray-500'>Devices</p>
+                  <p className='mt-2 text-lg font-bold text-gray-900 dark:text-white'>{devices?.length ?? user.devicesCount}</p>
+                </div>
+                <div className='rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/40'>
+                  <p className='text-xs font-semibold uppercase text-gray-500'>Messages</p>
+                  <p className='mt-2 text-lg font-bold text-gray-900 dark:text-white'>{messagesMeta.total}</p>
+                </div>
+              </div>
+
+              <div className='rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800'>
+                <h3 className='text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300'>Account Summary</h3>
+                <div className='mt-4 grid gap-3 text-sm sm:grid-cols-2'>
+                  <div>
+                    <p className='text-xs text-gray-500'>Email</p>
+                    <p className='break-all font-medium text-gray-900 dark:text-white'>{user.email}</p>
+                  </div>
+                  <div>
+                    <p className='text-xs text-gray-500'>Joined</p>
+                    <p className='font-medium text-gray-900 dark:text-white'>
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className='text-xs text-gray-500'>Current plan</p>
+                    <p className='font-medium capitalize text-gray-900 dark:text-white'>{planName}</p>
+                  </div>
+                  <div>
+                    <p className='text-xs text-gray-500'>Email verification</p>
+                    <p className='font-medium text-gray-900 dark:text-white'>{user.emailVerifiedAt ? 'Verified' : 'Unverified'}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {activeDetailTab === 'admin' && <section className='space-y-3'>
             <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-b border-gray-100 dark:border-gray-700 pb-2'>
               Role & Status
             </h3>
@@ -578,10 +657,10 @@ export default function UserManagementModal({
                 </div>
               </div>
             </div>
-          </section>
+          </section>}
 
           {/* ── Section 2: Subscription Override ────────────────────── */}
-          <section className='space-y-3'>
+          {activeDetailTab === 'subscription' && <section className='space-y-3'>
             <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-b border-gray-100 dark:border-gray-700 pb-2 flex items-center gap-2'>
               <Crown className='h-4 w-4 text-amber-500' /> Subscription Override
             </h3>
@@ -702,10 +781,10 @@ export default function UserManagementModal({
                 className='w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none'
               />
             </div>
-          </section>
+          </section>}
 
           {/* ── Section 3: Devices ───────────────────────────────────── */}
-          <section className='space-y-3'>
+          {activeDetailTab === 'devices' && <section className='space-y-3'>
             <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-b border-gray-100 dark:border-gray-700 pb-2 flex items-center gap-2'>
               <Smartphone className='h-4 w-4 text-blue-500' /> Devices ({devices?.length ?? 0})
             </h3>
@@ -799,9 +878,9 @@ export default function UserManagementModal({
                 ))}
               </div>
             )}
-          </section>
+          </section>}
 
-          <section className='space-y-3'>
+          {activeDetailTab === 'messages' && <section className='space-y-3'>
             <div className='flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-2 dark:border-gray-700'>
               <h3 className='flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300'>
                 <MessageSquareText className='h-4 w-4 text-emerald-500' /> SMS History ({messagesMeta.total})
@@ -916,25 +995,27 @@ export default function UserManagementModal({
                 </div>
               </div>
             )}
-          </section>
+          </section>}
         </div>
 
         {/* Footer Actions */}
-        <div className='sticky bottom-0 flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-4 rounded-b-2xl'>
+        <div className='flex items-center justify-end gap-3 border-t border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800'>
           <button
             onClick={onClose}
             className='rounded-lg border border-gray-200 dark:border-gray-600 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors'
           >
             Cancel
           </button>
-          <button
-            onClick={handleSaveAll}
-            disabled={saveDisabled}
-            className='flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-md'
-          >
-            {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
-            Save All Changes
-          </button>
+          {showAccountSave && (
+            <button
+              onClick={handleSaveAll}
+              disabled={saveDisabled}
+              className='flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-md'
+            >
+              {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
+              Save Account Changes
+            </button>
+          )}
         </div>
       </div>
     </div>
