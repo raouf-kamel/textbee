@@ -50,9 +50,27 @@ export const ApiEndpoints = {
   admin: {
     stats: () => '/admin/stats',
     deviceMonitoring: () => '/admin/devices/monitoring',
-    listUsers: (page: number, limit: number, search?: string) => {
-      const searchParam = search ? `&search=${encodeURIComponent(search)}` : ''
-      return `/admin/users?page=${page}&limit=${limit}${searchParam}`
+    listUsers: (
+      page: number,
+      limit: number,
+      filters?: {
+        search?: string
+        status?: string
+        role?: string
+        plan?: string
+        hasDevices?: string
+        sortBy?: string
+        sortDir?: string
+      },
+    ) => {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      })
+      Object.entries(filters ?? {}).forEach(([key, value]) => {
+        if (value && value !== 'all') params.set(key, value)
+      })
+      return `/admin/users?${params.toString()}`
     },
     updateRole: (id: string) => `/admin/users/${id}/role`,
     toggleBan: (id: string) => `/admin/users/${id}/ban`,

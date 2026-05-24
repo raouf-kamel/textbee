@@ -37,6 +37,18 @@ type AdminDeviceInput = {
   smsSendDelaySeconds?: number
 }
 
+type AdminUsersQuery = {
+  page?: number
+  limit?: number
+  search?: string
+  status?: string
+  role?: string
+  plan?: string
+  hasDevices?: string
+  sortBy?: string
+  sortDir?: string
+}
+
 const STALE_HEARTBEAT_MINUTES = 30
 const HIGH_PENDING_SMS_THRESHOLD = 5
 
@@ -83,7 +95,7 @@ export class AdminService {
     }
   }
 
-  async getUsersList(query: { page?: number; limit?: number; search?: string }) {
+  async getUsersList(query: AdminUsersQuery) {
     const page = Math.max(1, Number(query.page || 1))
     const limit = Math.max(1, Number(query.limit || 10))
     const skip = (page - 1) * limit
@@ -96,19 +108,38 @@ export class AdminService {
         { email: { $regex: cleanSearch, $options: 'i' } },
       ]
     }
+    if (query.role && query.role !== 'all') {
+      filter.role = query.role
+    }
+    if (query.status === 'banned') {
+      filter.isBanned = true
+    } else if (query.status === 'unverified') {
+      filter.emailVerifiedAt = null
+      filter.isBanned = { $ne: true }
+    } else if (query.status === 'active') {
+      filter.isBanned = { $ne: true }
+      filter.emailVerifiedAt = { $ne: null }
+    }
 
-    const totalUsers = await this.userModel.countDocuments(filter)
     const users = await this.userModel
       .find(filter)
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
       .lean()
 
     const userIds = users.map((user: any) => user._id)
-    const smsCounts = await this.smsModel.aggregate([
-      { $match: { user: { $in: userIds } } },
-      { $group: { _id: '$user', count: { $sum: 1 } } },
+    const [smsCounts, deviceCounts, subscriptions] = await Promise.all([
+      this.smsModel.aggregate([
+        { $match: { user: { $in: userIds } } },
+        { $group: { _id: '$user', count: { $sum: 1 } } },
+      ]),
+      this.deviceModel.aggregate([
+        { $match: { user: { $in: userIds } } },
+        { $group: { _id: '$user', count: { $sum: 1 } } },
+      ]),
+      this.subscriptionModel
+        .find({ user: { $in: userIds }, isActive: true })
+        .populate('plan')
+        .lean(),
     ])
     const smsCountByUserId = new Map(
       smsCounts.map((item: { _id: Types.ObjectId; count: number }) => [
@@ -116,20 +147,25 @@ export class AdminService {
         item.count,
       ]),
     )
+    const deviceCountByUserId = new Map(
+      deviceCounts.map((item: { _id: Types.ObjectId; count: number }) => [
+        item._id.toString(),
+        item.count,
+      ]),
+    )
+    const subscriptionByUserId = new Map(
+      subscriptions.map((subscription: any) => [
+        subscription.user.toString(),
+        subscription,
+      ]),
+    )
 
-    const usersWithDetails = await Promise.all(
-      users.map(async (user: any) => {
-        // Fetch active subscription for user
-        const subscription = await this.subscriptionModel
-          .findOne({ user: user._id, isActive: true })
-          .populate('plan')
-          .lean()
-
-        // Fetch devices count for user
-        const devicesCount = await this.deviceModel.countDocuments({
-          user: user._id,
-        })
-
+    const usersWithDetails = users
+      .map((user: any) => {
+        const userId = user._id.toString()
+        const subscription = subscriptionByUserId.get(userId)
+        const devicesCount = deviceCountByUserId.get(userId) ?? 0
+        const smsCount = smsCountByUserId.get(userId) ?? 0
         return {
           ...user,
           subscription: subscription || {
@@ -138,16 +174,59 @@ export class AdminService {
             status: 'active',
           },
           devicesCount,
-          smsCount: smsCountByUserId.get(user._id.toString()) ?? 0,
+          smsCount,
         }
       })
-    )
+      .filter((user: any) => {
+        if (query.plan && query.plan !== 'all') {
+          const planName = user.subscription?.plan?.name ?? 'free'
+          if (planName !== query.plan) return false
+        }
+        if (query.hasDevices === 'with' && user.devicesCount === 0) return false
+        if (query.hasDevices === 'without' && user.devicesCount > 0) return false
+        return true
+      })
+
+    const sortBy = query.sortBy || 'createdAt'
+    const sortDir = query.sortDir === 'asc' ? 1 : -1
+    usersWithDetails.sort((a: any, b: any) => {
+      let aValue: any
+      let bValue: any
+
+      if (sortBy === 'smsCount' || sortBy === 'devicesCount') {
+        aValue = a[sortBy] ?? 0
+        bValue = b[sortBy] ?? 0
+      } else if (sortBy === 'plan') {
+        aValue = a.subscription?.plan?.name ?? 'free'
+        bValue = b.subscription?.plan?.name ?? 'free'
+      } else if (sortBy === 'name' || sortBy === 'email') {
+        aValue = String(a[sortBy] ?? '').toLowerCase()
+        bValue = String(b[sortBy] ?? '').toLowerCase()
+      } else {
+        aValue = new Date(a.createdAt ?? 0).getTime()
+        bValue = new Date(b.createdAt ?? 0).getTime()
+      }
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return (aValue - bValue) * sortDir
+      }
+      return String(aValue).localeCompare(String(bValue)) * sortDir
+    })
+
+    const totalUsers = usersWithDetails.length
+    const paginatedUsers = usersWithDetails.slice(skip, skip + limit)
 
     return {
-      users: usersWithDetails,
+      users: paginatedUsers,
       totalUsers,
       totalPages: Math.ceil(totalUsers / limit),
       currentPage: page,
+      summary: {
+        bannedUsers: usersWithDetails.filter((user: any) => user.isBanned).length,
+        unverifiedUsers: usersWithDetails.filter((user: any) => !user.emailVerifiedAt).length,
+        usersWithoutDevices: usersWithDetails.filter((user: any) => user.devicesCount === 0).length,
+        totalMessages: usersWithDetails.reduce((total: number, user: any) => total + user.smsCount, 0),
+      },
     }
   }
 

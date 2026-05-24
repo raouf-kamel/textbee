@@ -32,9 +32,25 @@ export class AdminController {
   async getUsers(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
-    @Query('search') search?: string
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('role') role?: string,
+    @Query('plan') plan?: string,
+    @Query('hasDevices') hasDevices?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
   ) {
-    return this.adminService.getUsersList({ page, limit, search })
+    return this.adminService.getUsersList({
+      page,
+      limit,
+      search,
+      status,
+      role,
+      plan,
+      hasDevices,
+      sortBy,
+      sortDir,
+    })
   }
 
   @Patch('users/:id/role')

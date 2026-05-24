@@ -123,6 +123,30 @@ type PlanFormState = {
   isActive: boolean
 }
 
+type UserFilters = {
+  status: string
+  role: string
+  plan: string
+  hasDevices: string
+  sortBy: string
+  sortDir: string
+}
+
+type UsersSummary = {
+  bannedUsers: number
+  unverifiedUsers: number
+  usersWithoutDevices: number
+  totalMessages: number
+}
+
+type AdminUsersResponse = {
+  users: User[]
+  totalUsers: number
+  totalPages: number
+  currentPage: number
+  summary: UsersSummary
+}
+
 const emptyPlanForm: PlanFormState = {
   name: '',
   dailyLimit: '',
@@ -131,6 +155,15 @@ const emptyPlanForm: PlanFormState = {
   monthlyPrice: '0',
   yearlyPrice: '0',
   isActive: true,
+}
+
+const defaultUserFilters: UserFilters = {
+  status: 'all',
+  role: 'all',
+  plan: 'all',
+  hasDevices: 'all',
+  sortBy: 'createdAt',
+  sortDir: 'desc',
 }
 
 function extractErrorMessage(error: any, fallback: string) {
@@ -653,6 +686,7 @@ export default function AdminPage() {
   const [searchInput, setSearchInput] = useState('')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [activeTab, setActiveTab] = useState<AdminTab>('users')
+  const [userFilters, setUserFilters] = useState<UserFilters>(defaultUserFilters)
   const LIMIT = 10
 
   // Stats query
@@ -671,11 +705,11 @@ export default function AdminPage() {
     data: usersData,
     isLoading: usersLoading,
     refetch: refetchUsers,
-  } = useQuery({
-    queryKey: ['adminUsers', page, search],
+  } = useQuery<AdminUsersResponse>({
+    queryKey: ['adminUsers', page, search, userFilters],
     queryFn: () =>
       httpBrowserClient
-        .get(ApiEndpoints.admin.listUsers(page, LIMIT, search || undefined))
+        .get(ApiEndpoints.admin.listUsers(page, LIMIT, { search, ...userFilters }))
         .then((r) => r.data),
   })
 
@@ -693,6 +727,22 @@ export default function AdminPage() {
   const users: User[] = usersData?.users ?? []
   const totalPages: number = usersData?.totalPages ?? 1
   const totalUsers: number = usersData?.totalUsers ?? 0
+  const usersSummary: UsersSummary = usersData?.summary ?? {
+    bannedUsers: 0,
+    unverifiedUsers: 0,
+    usersWithoutDevices: 0,
+    totalMessages: 0,
+  }
+  const updateUserFilter = (field: keyof UserFilters, value: string) => {
+    setUserFilters((current) => ({ ...current, [field]: value }))
+    setPage(1)
+  }
+  const resetUserFilters = () => {
+    setUserFilters(defaultUserFilters)
+    setSearch('')
+    setSearchInput('')
+    setPage(1)
+  }
   const tabs: Array<{ key: AdminTab; label: string; icon: React.ReactNode }> = [
     { key: 'overview', label: 'Overview', icon: <Activity className='h-4 w-4' /> },
     { key: 'users', label: 'Users', icon: <Users className='h-4 w-4' /> },
@@ -807,6 +857,109 @@ export default function AdminPage() {
               </button>
             )}
           </form>
+        </div>
+
+        <div className='border-b border-gray-200 bg-gray-50 px-5 py-4 dark:border-gray-700 dark:bg-gray-800/50'>
+          <div className='grid gap-3 md:grid-cols-3 lg:grid-cols-6'>
+            <label className='space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
+              Status
+              <select
+                value={userFilters.status}
+                onChange={(e) => updateUserFilter('status', e.target.value)}
+                className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
+              >
+                <option value='all'>All statuses</option>
+                <option value='active'>Active</option>
+                <option value='banned'>Banned</option>
+                <option value='unverified'>Unverified</option>
+              </select>
+            </label>
+            <label className='space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
+              Role
+              <select
+                value={userFilters.role}
+                onChange={(e) => updateUserFilter('role', e.target.value)}
+                className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
+              >
+                <option value='all'>All roles</option>
+                <option value='REGULAR'>Regular</option>
+                <option value='ADMIN'>Admin</option>
+              </select>
+            </label>
+            <label className='space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
+              Plan
+              <select
+                value={userFilters.plan}
+                onChange={(e) => updateUserFilter('plan', e.target.value)}
+                className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
+              >
+                <option value='all'>All plans</option>
+                <option value='free'>Free</option>
+                <option value='pro'>Pro</option>
+                <option value='custom'>Custom</option>
+              </select>
+            </label>
+            <label className='space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
+              Devices
+              <select
+                value={userFilters.hasDevices}
+                onChange={(e) => updateUserFilter('hasDevices', e.target.value)}
+                className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
+              >
+                <option value='all'>Any devices</option>
+                <option value='with'>Has devices</option>
+                <option value='without'>No devices</option>
+              </select>
+            </label>
+            <label className='space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
+              Sort by
+              <select
+                value={userFilters.sortBy}
+                onChange={(e) => updateUserFilter('sortBy', e.target.value)}
+                className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
+              >
+                <option value='createdAt'>Joined</option>
+                <option value='smsCount'>Messages</option>
+                <option value='devicesCount'>Devices</option>
+                <option value='plan'>Plan</option>
+                <option value='name'>Name</option>
+                <option value='email'>Email</option>
+              </select>
+            </label>
+            <div className='flex items-end gap-2'>
+              <label className='flex-1 space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
+                Direction
+                <select
+                  value={userFilters.sortDir}
+                  onChange={(e) => updateUserFilter('sortDir', e.target.value)}
+                  className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
+                >
+                  <option value='desc'>Desc</option>
+                  <option value='asc'>Asc</option>
+                </select>
+              </label>
+              <button
+                type='button'
+                onClick={resetUserFilters}
+                className='rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+          <div className='mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+            {[
+              ['Banned', usersSummary.bannedUsers],
+              ['Unverified', usersSummary.unverifiedUsers],
+              ['No Devices', usersSummary.usersWithoutDevices],
+              ['Filtered Messages', usersSummary.totalMessages],
+            ].map(([label, value]) => (
+              <div key={label} className='rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800'>
+                <p className='text-xs font-semibold uppercase text-gray-500'>{label}</p>
+                <p className='mt-1 text-xl font-bold text-gray-900 dark:text-white'>{Number(value).toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Table */}
