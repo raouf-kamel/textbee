@@ -346,7 +346,7 @@ export class AdminService {
       this.deviceModel
         .find()
         .select(
-          '_id user name brand manufacturer model os osVersion appVersionName appVersionCode appVersionInfo enabled heartbeatEnabled lastHeartbeat sentSMSCount receivedSMSCount fcmTokenInvalidatedAt fcmTokenInvalidReason createdAt',
+          '_id user name brand manufacturer model os osVersion appVersionName appVersionCode appVersionInfo enabled heartbeatEnabled lastHeartbeat sentSMSCount receivedSMSCount fcmTokenInvalidatedAt fcmTokenInvalidReason batteryInfo networkInfo createdAt',
         )
         .populate({ path: 'user', select: '_id name email' })
         .sort({ lastHeartbeat: 1 })
@@ -380,6 +380,17 @@ export class AdminService {
       const isOnline = Boolean(device.enabled && lastHeartbeat && lastHeartbeat >= staleSince)
       const isStale = Boolean(device.enabled && (!lastHeartbeat || lastHeartbeat < staleSince))
       const hasHighPendingSMS = pendingSMSCount >= HIGH_PENDING_SMS_THRESHOLD
+      const heartbeatAgeMinutes = lastHeartbeat
+        ? Math.max(0, Math.floor((Date.now() - lastHeartbeat.getTime()) / 60000))
+        : null
+      const hasInvalidFcmToken = Boolean(device.fcmTokenInvalidatedAt)
+      const connectionStatus = !device.enabled
+        ? 'disabled'
+        : hasInvalidFcmToken
+          ? 'fcm_invalid'
+          : isOnline
+            ? 'online'
+            : 'offline'
 
       return {
         _id: device._id,
@@ -394,14 +405,19 @@ export class AdminService {
         enabled: device.enabled,
         heartbeatEnabled: device.heartbeatEnabled,
         lastHeartbeat: device.lastHeartbeat,
+        heartbeatAgeMinutes,
         sentSMSCount: device.sentSMSCount ?? 0,
         receivedSMSCount: device.receivedSMSCount ?? 0,
         pendingSMSCount,
         isOnline,
         isStale,
         hasHighPendingSMS,
+        connectionStatus,
+        fcmTokenStatus: hasInvalidFcmToken ? 'invalid' : 'valid',
         fcmTokenInvalidatedAt: device.fcmTokenInvalidatedAt,
         fcmTokenInvalidReason: device.fcmTokenInvalidReason,
+        batteryInfo: device.batteryInfo,
+        networkInfo: device.networkInfo,
         user: device.user,
         createdAt: device.createdAt,
       }

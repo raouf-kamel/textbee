@@ -65,14 +65,26 @@ type DeviceMonitoringDevice = {
   enabled: boolean
   heartbeatEnabled?: boolean
   lastHeartbeat?: string
+  heartbeatAgeMinutes?: number | null
   sentSMSCount: number
   receivedSMSCount: number
   pendingSMSCount: number
   isOnline: boolean
   isStale: boolean
   hasHighPendingSMS: boolean
+  connectionStatus?: 'online' | 'offline' | 'disabled' | 'fcm_invalid'
+  fcmTokenStatus?: 'valid' | 'invalid'
   fcmTokenInvalidatedAt?: string
   fcmTokenInvalidReason?: string
+  batteryInfo?: {
+    percentage?: number
+    isCharging?: boolean
+    lastUpdated?: string
+  }
+  networkInfo?: {
+    networkType?: 'wifi' | 'cellular' | 'none'
+    lastUpdated?: string
+  }
   user?: {
     _id: string
     name?: string
@@ -190,6 +202,18 @@ function formatHeartbeat(timestamp?: string) {
   return new Date(timestamp).toLocaleString()
 }
 
+function formatHeartbeatAge(ageMinutes?: number | null) {
+  if (ageMinutes === null || ageMinutes === undefined) return 'Never'
+  if (ageMinutes < 1) return 'Just now'
+  if (ageMinutes < 60) return `${ageMinutes}m ago`
+  const hours = Math.floor(ageMinutes / 60)
+  const minutes = ageMinutes % 60
+  if (hours < 24) return minutes ? `${hours}h ${minutes}m ago` : `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  const remainingHours = hours % 24
+  return remainingHours ? `${days}d ${remainingHours}h ago` : `${days}d ago`
+}
+
 function formatVersion(device: DeviceMonitoringDevice) {
   const androidVersion = device.osVersion ? `Android ${device.osVersion}` : device.os || 'Android -'
   const appVersion = [
@@ -200,6 +224,47 @@ function formatVersion(device: DeviceMonitoringDevice) {
   ].filter(Boolean).join(' ')
 
   return `${androidVersion} / ${appVersion || 'App -'}`
+}
+
+function getDeviceConnectionBadge(device: DeviceMonitoringDevice) {
+  if (device.connectionStatus === 'disabled') {
+    return {
+      label: 'Disabled',
+      className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+      icon: <WifiOff className='h-3 w-3' />,
+    }
+  }
+  if (device.connectionStatus === 'fcm_invalid') {
+    return {
+      label: 'FCM Invalid',
+      className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+      icon: <AlertCircle className='h-3 w-3' />,
+    }
+  }
+  if (device.isOnline) {
+    return {
+      label: 'Online',
+      className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+      icon: <Wifi className='h-3 w-3' />,
+    }
+  }
+  return {
+    label: 'Offline',
+    className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+    icon: <WifiOff className='h-3 w-3' />,
+  }
+}
+
+function formatBattery(device: DeviceMonitoringDevice) {
+  if (typeof device.batteryInfo?.percentage !== 'number') return 'Battery -'
+  const charging = device.batteryInfo.isCharging ? 'charging' : 'not charging'
+  return `${device.batteryInfo.percentage}% ${charging}`
+}
+
+function formatNetwork(device: DeviceMonitoringDevice) {
+  const network = device.networkInfo?.networkType
+  if (!network) return 'Network -'
+  return network.charAt(0).toUpperCase() + network.slice(1)
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -374,13 +439,16 @@ function DeviceMonitoringSection() {
           </div>
 
           <div className='overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700'>
-            <table className='w-full min-w-[880px] text-sm'>
+            <table className='w-full min-w-[1120px] text-sm'>
               <thead className='bg-gray-50 dark:bg-gray-700/40'>
                 <tr>
                   <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Device</th>
                   <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Status</th>
                   <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Last heartbeat</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Heartbeat age</th>
                   <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Versions</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>FCM</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Battery / Network</th>
                   <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Pending</th>
                   <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>User</th>
                 </tr>
@@ -389,7 +457,7 @@ function DeviceMonitoringSection() {
                 {isLoading ? (
                   Array.from({ length: 4 }).map((_, index) => (
                     <tr key={index}>
-                      {Array.from({ length: 6 }).map((__, cellIndex) => (
+                      {Array.from({ length: 9 }).map((__, cellIndex) => (
                         <td key={cellIndex} className='px-3 py-3'>
                           <div className='h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700' />
                         </td>
@@ -398,59 +466,74 @@ function DeviceMonitoringSection() {
                   ))
                 ) : attentionDevices.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className='px-3 py-8 text-center text-gray-400'>
+                    <td colSpan={9} className='px-3 py-8 text-center text-gray-400'>
                       No devices need attention
                     </td>
                   </tr>
                 ) : (
-                  attentionDevices.map((device) => (
-                    <tr key={device._id}>
-                      <td className='px-3 py-3'>
-                        <p className='font-medium text-gray-900 dark:text-white'>{formatDeviceName(device)}</p>
-                        <p className='text-xs text-gray-400'>{device.brand || '-'} {device.model || ''}</p>
-                      </td>
-                      <td className='px-3 py-3'>
-                        <div className='flex flex-wrap gap-1.5'>
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            device.isOnline
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                          }`}>
-                            {device.isOnline ? <Wifi className='h-3 w-3' /> : <WifiOff className='h-3 w-3' />}
-                            {device.isOnline ? 'Online' : 'Offline'}
+                  attentionDevices.map((device) => {
+                    const connectionBadge = getDeviceConnectionBadge(device)
+                    return (
+                      <tr key={device._id}>
+                        <td className='px-3 py-3'>
+                          <p className='font-medium text-gray-900 dark:text-white'>{formatDeviceName(device)}</p>
+                          <p className='text-xs text-gray-400'>{device.brand || '-'} {device.model || ''}</p>
+                        </td>
+                        <td className='px-3 py-3'>
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${connectionBadge.className}`}>
+                            {connectionBadge.icon}
+                            {connectionBadge.label}
                           </span>
-                          {device.fcmTokenInvalidatedAt && (
-                            <span className='rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'>
-                              FCM invalid
+                        </td>
+                        <td className='px-3 py-3 text-xs text-gray-500 dark:text-gray-400'>
+                          {formatHeartbeat(device.lastHeartbeat)}
+                        </td>
+                        <td className='px-3 py-3 text-xs text-gray-600 dark:text-gray-300'>
+                          {formatHeartbeatAge(device.heartbeatAgeMinutes)}
+                        </td>
+                        <td className='px-3 py-3 text-xs text-gray-600 dark:text-gray-300'>
+                          {formatVersion(device)}
+                        </td>
+                        <td className='px-3 py-3'>
+                          <div className='max-w-[170px] space-y-1'>
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              device.fcmTokenStatus === 'invalid'
+                                ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                                : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                            }`}>
+                              {device.fcmTokenStatus === 'invalid' ? 'Invalid' : 'Valid'}
                             </span>
+                            {device.fcmTokenInvalidReason && (
+                              <p className='line-clamp-2 text-xs text-orange-600 dark:text-orange-300' title={device.fcmTokenInvalidReason}>
+                                {device.fcmTokenInvalidReason}
+                              </p>
+                            )}
+                          </div>
+                        </td>
+                        <td className='px-3 py-3 text-xs text-gray-600 dark:text-gray-300'>
+                          <p>{formatBattery(device)}</p>
+                          <p className='text-gray-400'>{formatNetwork(device)}</p>
+                        </td>
+                        <td className='px-3 py-3'>
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            device.hasHighPendingSMS
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                          }`}>
+                            {device.pendingSMSCount}
+                          </span>
+                        </td>
+                        <td className='px-3 py-3'>
+                          <p className='max-w-[180px] truncate text-xs font-medium text-gray-700 dark:text-gray-200'>
+                            {device.user?.name || device.user?.email || '-'}
+                          </p>
+                          {device.user?.email && (
+                            <p className='max-w-[180px] truncate text-xs text-gray-400'>{device.user.email}</p>
                           )}
-                        </div>
-                      </td>
-                      <td className='px-3 py-3 text-xs text-gray-500 dark:text-gray-400'>
-                        {formatHeartbeat(device.lastHeartbeat)}
-                      </td>
-                      <td className='px-3 py-3 text-xs text-gray-600 dark:text-gray-300'>
-                        {formatVersion(device)}
-                      </td>
-                      <td className='px-3 py-3'>
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          device.hasHighPendingSMS
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                            : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                        }`}>
-                          {device.pendingSMSCount}
-                        </span>
-                      </td>
-                      <td className='px-3 py-3'>
-                        <p className='max-w-[180px] truncate text-xs font-medium text-gray-700 dark:text-gray-200'>
-                          {device.user?.name || device.user?.email || '-'}
-                        </p>
-                        {device.user?.email && (
-                          <p className='max-w-[180px] truncate text-xs text-gray-400'>{device.user.email}</p>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
