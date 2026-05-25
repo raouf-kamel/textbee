@@ -5,9 +5,11 @@ import httpBrowserClient from '@/lib/httpBrowserClient'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import { Loader, CheckCircle } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 export default function CheckoutPage({ params }) {
   const [error, setError] = useState<string | null>(null)
+  const { t } = useI18n()
 
   const planName = params.planName as string
 
@@ -23,18 +25,18 @@ export default function CheckoutPage({ params }) {
         if (response.data?.redirectUrl) {
           window.location.href = response.data?.redirectUrl
         } else {
-          throw new Error('No redirect URL found')
+          throw new Error(t('checkout.noRedirect'))
         }
       } catch (error) {
         if (retries > 0) {
           initiateCheckout(retries - 1)
         } else {
-          setError(error.response?.data?.message || 'Failed to create checkout session. Please try again or contact billing@textbee.dev.')
+          setError(error.response?.data?.message || t('checkout.failedCreate'))
           console.error(error.response?.data?.message)
         }
       }
     },
-    [planName]
+    [planName, t]
   )
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function CheckoutPage({ params }) {
           }}
           className='mt-4 px-4 py-2 bg-brand-500 text-white rounded hover:bg-brand-600'
         >
-          Try Again
+          {t('common.retry')}
         </button>
       </div>
     )
@@ -65,13 +67,15 @@ export default function CheckoutPage({ params }) {
   return (
     <div className='flex flex-col items-center justify-center min-h-[80vh] bg-gray-100 p-6 rounded-lg shadow-lg'>
       <Loader className='animate-spin mb-4 text-brand-500' size={48} />
-      <h2 className='text-2xl font-bold text-gray-800 mb-2'>Hang Tight!</h2>
+      <h2 className='text-2xl font-bold text-gray-800 mb-2'>
+        {t('checkout.hangTight')}
+      </h2>
       <p className='text-lg text-gray-600 mb-4'>
-        We're processing your order. This won't take long!
+        {t('checkout.processing')}
       </p>
       <CheckCircle className='text-green-500 mb-2' size={32} />
       <span className='text-lg font-semibold'>
-        Thank you for your patience!
+        {t('checkout.thankYou')}
       </span>
     </div>
   )

@@ -25,6 +25,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useI18n } from '@/lib/i18n'
 
 interface Release {
   id: number
@@ -46,6 +47,8 @@ export default function DownloadPage() {
   const [releases, setReleases] = useState<Release[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { locale, t } = useI18n()
+
   useEffect(() => {
     async function fetchReleases() {
       try {
@@ -53,12 +56,12 @@ export default function DownloadPage() {
           'https://api.github.com/repos/vernu/textbee/releases'
         )
         if (!response.ok) {
-          throw new Error('Failed to fetch releases')
+          throw new Error(t('download.failedFetch'))
         }
         const data = await response.json()
         setReleases(data)
       } catch (err) {
-        setError('Failed to load releases. Please try again later.')
+        setError(t('download.failedLoad'))
         console.error(err)
       } finally {
         setLoading(false)
@@ -66,7 +69,7 @@ export default function DownloadPage() {
     }
 
     fetchReleases()
-  }, [])
+  }, [t])
 
   // Get the latest stable release (not prerelease)
   const latestRelease = releases.find((release) => !release.prerelease)
@@ -74,7 +77,7 @@ export default function DownloadPage() {
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -135,14 +138,13 @@ export default function DownloadPage() {
       <div className='container mx-auto max-w-5xl'>
         <div className='text-center mb-12'>
           <div className='inline-flex items-center rounded-full border px-3 py-1 text-sm bg-brand-50 dark:bg-brand-950 border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 mb-4'>
-            <Download className='h-3.5 w-3.5 mr-2' /> Download TextBee
+            <Download className='h-3.5 w-3.5 mr-2' /> {t('download.badge')}
           </div>
           <h1 className='text-4xl font-bold tracking-tight text-gray-900 dark:text-white'>
-            Download TextBee App
+            {t('download.title')}
           </h1>
           <p className='mt-4 text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto'>
-            Transform your Android device into a powerful SMS gateway with our
-            easy-to-use application.
+            {t('download.description')}
           </p>
         </div>
 
@@ -154,14 +156,14 @@ export default function DownloadPage() {
                 <div>
                   <div className='flex items-center gap-2 mb-2'>
                     <Badge className='bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 hover:bg-green-100'>
-                      Latest Version
+                      {t('download.latestVersion')}
                     </Badge>
                     {latestRelease?.prerelease && (
                       <Badge
                         variant='outline'
                         className='bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
                       >
-                        Beta
+                        {t('download.beta')}
                       </Badge>
                     )}
                   </div>
@@ -170,11 +172,11 @@ export default function DownloadPage() {
                     <Skeleton className='h-8 w-48' />
                   ) : error ? (
                     <h2 className='text-2xl font-bold text-gray-900 dark:text-white'>
-                      TextBee App
+                      {t('download.appName')}
                     </h2>
                   ) : (
                     <h2 className='text-2xl font-bold text-gray-900 dark:text-white'>
-                      {latestRelease?.name || 'TextBee App'}
+                      {latestRelease?.name || t('download.appName')}
                     </h2>
                   )}
                 </div>
@@ -182,7 +184,7 @@ export default function DownloadPage() {
                 {loading ? (
                   <Skeleton className='h-10 w-36' />
                 ) : error ? (
-                  <Button disabled>Download Unavailable</Button>
+                  <Button disabled>{t('download.downloadUnavailable')}</Button>
                 ) : latestRelease?.assets?.length ? (
                   <Button
                     size='lg'
@@ -195,11 +197,11 @@ export default function DownloadPage() {
                       rel='noopener noreferrer'
                     >
                       <ArrowDownToLine className='mr-2 h-5 w-5' />
-                      Download Now
+                      {t('download.downloadNow')}
                     </Link>
                   </Button>
                 ) : (
-                  <Button disabled>No Downloads Available</Button>
+                  <Button disabled>{t('download.noDownloadsAvailable')}</Button>
                 )}
               </div>
 
@@ -216,12 +218,18 @@ export default function DownloadPage() {
                   <div className='flex flex-wrap gap-4 mb-6 text-sm text-gray-600 dark:text-gray-400'>
                     <div className='flex items-center'>
                       <Tag className='h-4 w-4 mr-1' />
-                      <span>Version: {latestRelease.tag_name}</span>
+                      <span>
+                        {t('download.version', {
+                          version: latestRelease.tag_name,
+                        })}
+                      </span>
                     </div>
                     <div className='flex items-center'>
                       <Calendar className='h-4 w-4 mr-1' />
                       <span>
-                        Released: {formatDate(latestRelease.published_at)}
+                        {t('download.released', {
+                          date: formatDate(latestRelease.published_at),
+                        })}
                       </span>
                     </div>
                     {latestRelease.assets?.[0] && (
@@ -229,14 +237,18 @@ export default function DownloadPage() {
                         <div className='flex items-center'>
                           <FileDown className='h-4 w-4 mr-1' />
                           <span>
-                            Size: {formatFileSize(latestRelease.assets[0].size)}
+                            {t('download.size', {
+                              size: formatFileSize(latestRelease.assets[0].size),
+                            })}
                           </span>
                         </div>
                         <div className='flex items-center'>
                           <Download className='h-4 w-4 mr-1' />
                           <span>
-                            Downloads:{' '}
-                            {latestRelease.assets[0].download_count.toLocaleString()}
+                            {t('download.downloads', {
+                              count:
+                                latestRelease.assets[0].download_count.toLocaleString(),
+                            })}
                           </span>
                         </div>
                       </>
@@ -264,7 +276,7 @@ export default function DownloadPage() {
                           {changelog.length > 0 && (
                             <div>
                               <h3 className='text-lg font-semibold mb-2 text-gray-900 dark:text-white'>
-                                What's New:
+                                {t('download.whatsNew')}
                               </h3>
                               <ul className='space-y-1 list-disc pl-5 text-gray-600 dark:text-gray-400'>
                                 {changelog.map((item, i) => (
@@ -287,18 +299,18 @@ export default function DownloadPage() {
                           rel='noopener noreferrer'
                         >
                           <Github className='mr-2 h-4 w-4' />
-                          View on GitHub
+                          {t('download.viewOnGithub')}
                         </Link>
                       </Button>
                       <div className='text-sm text-gray-500 dark:text-gray-400'>
-                        Compatible with Android 7.0+ devices.
+                        {t('download.compatibility')}
                       </div>
                     </div>
                   </div>
                 </>
               ) : (
                 <div className='text-gray-600 dark:text-gray-400'>
-                  No releases available at this time.
+                  {t('download.noReleases')}
                 </div>
               )}
             </div>
@@ -309,7 +321,7 @@ export default function DownloadPage() {
         <div>
           <div className='flex items-center justify-between mb-6'>
             <h2 className='text-2xl font-bold text-gray-900 dark:text-white'>
-              All Releases
+              {t('download.allReleases')}
             </h2>
             <Button
               variant='outline'
@@ -323,7 +335,7 @@ export default function DownloadPage() {
                 rel='noopener noreferrer'
               >
                 <ExternalLink className='mr-2 h-4 w-4' />
-                View All on GitHub
+                {t('download.viewAllOnGithub')}
               </Link>
             </Button>
           </div>
@@ -349,10 +361,10 @@ export default function DownloadPage() {
             <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 text-center'>
               <PackageOpen className='h-12 w-12 mx-auto text-gray-400 mb-4' />
               <h3 className='text-lg font-medium text-gray-900 dark:text-white mb-2'>
-                No Releases Found
+                {t('download.noReleasesFound')}
               </h3>
               <p className='text-gray-600 dark:text-gray-400'>
-                There are no releases available at this time.
+                {t('download.noReleasesDescription')}
               </p>
             </div>
           ) : (
@@ -371,7 +383,7 @@ export default function DownloadPage() {
                         </h3>
                         {release.id === latestRelease?.id && (
                           <Badge className='bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'>
-                            Latest
+                            {t('download.latest')}
                           </Badge>
                         )}
                         {release.prerelease && (
@@ -379,12 +391,14 @@ export default function DownloadPage() {
                             variant='outline'
                             className='bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
                           >
-                            Beta
+                            {t('download.beta')}
                           </Badge>
                         )}
                       </div>
                       <div className='text-sm text-gray-500 dark:text-gray-400'>
-                        Released on {formatDate(release.published_at)}
+                        {t('download.releasedOn', {
+                          date: formatDate(release.published_at),
+                        })}
                       </div>
                     </div>
                   </AccordionTrigger>
@@ -410,7 +424,7 @@ export default function DownloadPage() {
                             {changelog.length > 0 && (
                               <div>
                                 <h4 className='text-base font-medium mb-2 text-gray-900 dark:text-white'>
-                                  Changes:
+                                  {t('download.changes')}
                                 </h4>
                                 <ul className='space-y-1 list-disc pl-5 text-gray-600 dark:text-gray-400'>
                                   {changelog.map((item, i) => (
@@ -427,7 +441,7 @@ export default function DownloadPage() {
                       {release.assets.length > 0 && (
                         <div className='mt-4 pt-4 border-t border-gray-200 dark:border-gray-700'>
                           <h4 className='text-base font-medium mb-3 text-gray-900 dark:text-white'>
-                            Downloads:
+                            {t('download.downloadsHeading')}
                           </h4>
                           <div className='space-y-2'>
                             {release.assets.map((asset) => (
@@ -461,7 +475,7 @@ export default function DownloadPage() {
                                       rel='noopener noreferrer'
                                     >
                                       <Download className='mr-1 h-3 w-3' />
-                                      Download
+                                      {t('download.download')}
                                     </Link>
                                   </Button>
                                 </div>
@@ -484,7 +498,7 @@ export default function DownloadPage() {
                             rel='noopener noreferrer'
                           >
                             <Github className='mr-2 h-4 w-4' />
-                            View Release
+                            {t('download.viewRelease')}
                           </Link>
                         </Button>
                       </div>
@@ -502,26 +516,25 @@ export default function DownloadPage() {
             <Info className='h-5 w-5 text-brand-600 dark:text-brand-400 mt-0.5 mr-3 flex-shrink-0' />
             <div>
               <h3 className='text-lg font-semibold text-gray-900 dark:text-white mb-2'>
-                System Requirements
+                {t('download.requirements')}
               </h3>
               <ul className='space-y-2 text-gray-600 dark:text-gray-400'>
                 <li className='flex items-start'>
                   <Check className='h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0' />
-                  <span>Android 7.0 (Nougat) or higher</span>
+                  <span>{t('download.requirementAndroid')}</span>
                 </li>
                 <li className='flex items-start'>
                   <Check className='h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0' />
-                  <span>SMS capability on the Android device</span>
+                  <span>{t('download.requirementSms')}</span>
                 </li>
                 <li className='flex items-start'>
                   <Check className='h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0' />
-                  <span>Internet connection for API communication</span>
+                  <span>{t('download.requirementInternet')}</span>
                 </li>
                 <li className='flex items-start'>
                   <Check className='h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0' />
                   <span>
-                    Battery optimization disabled for background operation
-                    (recommended)
+                    {t('download.requirementBattery')}
                   </span>
                 </li>
               </ul>

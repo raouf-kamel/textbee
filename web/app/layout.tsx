@@ -7,6 +7,7 @@ import Analytics from '@/components/shared/analytics'
 import { Session } from 'next-auth'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { I18nProvider } from '@/lib/i18n'
 
 export const metadata: Metadata = {
   title: 'textbee.dev - sms gateway - dashboard',
@@ -18,7 +19,9 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang='en' dir='ltr' suppressHydrationWarning>
       <body>
-        <main>{children}</main>
+        <I18nProvider>
+          <main>{children}</main>
+        </I18nProvider>
       </body>
     </html>
   )

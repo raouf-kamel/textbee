@@ -9,7 +9,6 @@ import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Routes } from '@/config/routes'
 import { ThemeProvider } from 'next-themes'
-import { I18nProvider } from '@/lib/i18n'
 
 export default function LayoutWrapper({ session, children }) {
   const router = useRouter()
@@ -38,17 +37,15 @@ export default function LayoutWrapper({ session, children }) {
   return (
     <>
       <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
-        <I18nProvider>
-          <SessionProvider session={session}>
-            <QueryClientProvider client={queryClient}>
-              <GoogleOAuthProvider
-                clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}
-              >
-                {children}
-              </GoogleOAuthProvider>
-            </QueryClientProvider>
-          </SessionProvider>
-        </I18nProvider>
+        <SessionProvider session={session}>
+          <QueryClientProvider client={queryClient}>
+            <GoogleOAuthProvider
+              clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+            >
+              {children}
+            </GoogleOAuthProvider>
+          </QueryClientProvider>
+        </SessionProvider>
       </ThemeProvider>
     </>
   )
