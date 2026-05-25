@@ -586,6 +586,7 @@
 
             <!-- How To Use Card -->
             <androidx.cardview.widget.CardView
+                android:visibility="gone"
                 android:id="@+id/bottom"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -694,6 +695,7 @@
             
             <!-- App Version Info Card -->
             <androidx.cardview.widget.CardView
+                android:visibility="gone"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
