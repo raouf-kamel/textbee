@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
@@ -19,19 +19,28 @@ import {
 } from '@/components/ui/form'
 import { Routes } from '@/config/routes'
 import { useTurnstile } from '@/lib/turnstile'
+import { useI18n } from '@/lib/i18n'
 
-const loginSchema = z.object({
-  email: z.string().email({ message: 'Invalid email address' }),
-  password: z.string().min(1, { message: 'Password is required' }),
-  turnstileToken: z
-    .string()
-    .min(1, { message: 'Please complete the bot verification' }),
-})
-
-type LoginFormValues = z.infer<typeof loginSchema>
+type LoginFormValues = {
+  email: string
+  password: string
+  turnstileToken: string
+}
 
 export default function LoginForm() {
   const router = useRouter()
+  const { t } = useI18n()
+  const loginSchema = useMemo(
+    () =>
+      z.object({
+        email: z.string().email({ message: t('auth.invalidEmail') }),
+        password: z.string().min(1, { message: t('auth.passwordRequired') }),
+        turnstileToken: z
+          .string()
+          .min(1, { message: t('auth.botVerificationRequired') }),
+      }),
+    [t]
+  )
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -74,7 +83,7 @@ export default function LoginForm() {
     if (!data.turnstileToken) {
       form.setError('turnstileToken', {
         type: 'manual',
-        message: 'Please complete the bot verification',
+        message: t('auth.botVerificationRequired'),
       })
       return
     }
@@ -91,14 +100,14 @@ export default function LoginForm() {
       if (result?.error) {
         form.setError('root', {
           type: 'manual',
-          message: 'Invalid email or password',
+          message: t('auth.invalidCredentials'),
         })
       }
     } catch (error) {
       console.error('login error:', error)
       form.setError('root', {
         type: 'manual',
-        message: 'An unexpected error occurred. Please try again.',
+        message: t('auth.unexpectedError'),
       })
     }
   }
@@ -111,7 +120,7 @@ export default function LoginForm() {
           name='email'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('common.email')}</FormLabel>
               <FormControl>
                 <Input
                   placeholder='m@example.com'
@@ -128,7 +137,7 @@ export default function LoginForm() {
           name='password'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>{t('common.password')}</FormLabel>
               <FormControl>
                 <Input
                   type='password'
@@ -168,10 +177,10 @@ export default function LoginForm() {
           {form.formState.isSubmitting ? (
             <>
               {/* <Icons.spinner className="mr-2 h-4 w-4 animate-spin" /> */}
-              Signing in...
+              {t('auth.signingIn')}
             </>
           ) : (
-            'Sign In'
+            t('auth.signIn')
           )}
         </Button>
       </form>

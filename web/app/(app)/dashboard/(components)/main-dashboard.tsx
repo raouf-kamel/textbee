@@ -9,10 +9,12 @@ import DeviceList from './device-list'
 import ApiKeys from './api-keys'
 import Messaging from './messaging'
 import WebhooksSection from './webhooks/webhooks-section'
+import { useI18n } from '@/lib/i18n'
 
 export default function DashboardOverview() {
 
   const [currentTab, setCurrentTab] = useState('overview')
+  const { t } = useI18n()
 
   const handleTabChange = (value: string) => {
     setCurrentTab(value)
@@ -30,7 +32,7 @@ export default function DashboardOverview() {
         </TabsTrigger>
         <TabsTrigger value='messaging' className='relative flex-1'>
           <MessageSquare className='ml-2 h-4 w-4' />
-          <span className='mx-2'>Messaging</span>
+          <span className='mx-2'>{t('common.messaging')}</span>
         </TabsTrigger>
       </TabsList>
 

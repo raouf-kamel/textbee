@@ -11,6 +11,7 @@ import UpdateAppNotificationBar from './(components)/update-app-notification-bar
 import VerifyEmailAlert from './(components)/verify-email-alert'
 import PastDueBillingAlert from './(components)/past-due-billing-alert'
 import { SurveyModal } from '@/components/shared/survey-modal'
+import { useI18n } from '@/lib/i18n'
 
 export default function DashboardLayout({
   children,
@@ -19,41 +20,48 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const { direction, t } = useI18n()
 
   return (
     <div className='flex min-h-screen flex-col md:flex-row'>
       {/* Sidebar for desktop */}
-      <aside className='hidden md:flex flex-col fixed top-[20%] left-0 w-24 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg z-10 rounded-r-lg'>
+      <aside
+        className={`hidden md:flex flex-col fixed top-[20%] w-24 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg z-10 ${
+          direction === 'rtl'
+            ? 'right-0 border-l rounded-l-lg'
+            : 'left-0 border-r rounded-r-lg'
+        }`}
+      >
         <nav className='flex flex-col justify-center items-center h-full py-3 space-y-4'>
           <NavItem
             href='/dashboard'
             icon={<Home className='h-6 w-6 stroke-[1.5]' />}
-            label='Dashboard'
+            label={t('common.dashboard')}
             isActive={pathname === '/dashboard'}
           />
           <NavItem
             href='/dashboard/messaging'
             icon={<MessageSquareText className='h-6 w-6 stroke-[1.5]' />}
-            label='Messaging'
+            label={t('common.messaging')}
             isActive={pathname === '/dashboard/messaging'}
           />
           <NavItem
             href='/dashboard/community'
             icon={<Users className='h-6 w-6 stroke-[1.5]' />}
-            label='Community'
+            label={t('common.community')}
             isActive={pathname === '/dashboard/community'}
           />
           <NavItem
             href='/dashboard/account'
             icon={<UserCircle className='h-6 w-6 stroke-[1.5]' />}
-            label='Account'
+            label={t('common.account')}
             isActive={pathname === '/dashboard/account'}
           />
           {session?.user?.role === 'ADMIN' && (
             <NavItem
               href='/dashboard/admin'
               icon={<ShieldAlert className='h-6 w-6 stroke-[1.5]' />}
-              label='Admin'
+              label={t('common.admin')}
               isActive={pathname.startsWith('/dashboard/admin')}
             />
           )}
@@ -61,7 +69,11 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main content with left padding to account for fixed sidebar */}
-      <main className='flex-1 min-w-0 overflow-auto md:ml-24'>
+      <main
+        className={`flex-1 min-w-0 overflow-auto ${
+          direction === 'rtl' ? 'md:mr-24' : 'md:ml-24'
+        }`}
+      >
         <div className='space-y-2 p-4'>
           <UpdateAppNotificationBar />
           <VerifyEmailAlert />
@@ -79,32 +91,32 @@ export default function DashboardLayout({
           <MobileNavItem
             href='/dashboard'
             icon={<Home className='h-5 w-5 stroke-[1.5]' />}
-            label='Dashboard'
+            label={t('common.dashboard')}
             isActive={pathname === '/dashboard'}
           />
           <MobileNavItem
             href='/dashboard/messaging'
             icon={<MessageSquareText className='h-5 w-5 stroke-[1.5]' />}
-            label='Messaging'
+            label={t('common.messaging')}
             isActive={pathname === '/dashboard/messaging'}
           />
           <MobileNavItem
             href='/dashboard/community'
             icon={<Users className='h-5 w-5 stroke-[1.5]' />}
-            label='Community'
+            label={t('common.community')}
             isActive={pathname === '/dashboard/community'}
           />
           <MobileNavItem
             href='/dashboard/account'
             icon={<UserCircle className='h-5 w-5 stroke-[1.5]' />}
-            label='Account'
+            label={t('common.account')}
             isActive={pathname === '/dashboard/account'}
           />
           {session?.user?.role === 'ADMIN' && (
             <MobileNavItem
               href='/dashboard/admin'
               icon={<ShieldAlert className='h-5 w-5 stroke-[1.5]' />}
-              label='Admin'
+              label={t('common.admin')}
               isActive={pathname.startsWith('/dashboard/admin')}
             />
           )}

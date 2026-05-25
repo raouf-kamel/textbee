@@ -15,20 +15,22 @@ import {
 import LoginWithGoogle from '../(components)/login-with-google'
 import LoginForm from '../(components)/login-form'
 import { Routes } from '@/config/routes'
+import { useI18n } from '@/lib/i18n'
 
 export default function LoginPage() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect')
+  const { t } = useI18n()
 
   return (
     <div className='flex items-center justify-center min-h-screen bg-gray-100 dark:bg-muted'>
       <Card className='w-[400px] shadow-lg'>
         <CardHeader className='space-y-1'>
           <CardTitle className='text-2xl font-bold text-center'>
-            Welcome back
+            {t('auth.welcomeBack')}
           </CardTitle>
           <CardDescription className='text-center'>
-            Enter your credentials to access your account
+            {t('auth.loginDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -39,7 +41,7 @@ export default function LoginPage() {
             </div>
             <div className='relative flex justify-center text-xs uppercase'>
               <span className='bg-background dark:bg-muted px-2 text-muted-foreground'>
-                Or
+                {t('common.or')}
               </span>
             </div>
           </div>
@@ -52,10 +54,10 @@ export default function LoginPage() {
             href={Routes.resetPassword}
             className='text-sm text-brand-600 hover:underline'
           >
-            Forgot your password?
+            {t('auth.forgotPassword')}
           </Link>
           <p className='text-sm text-gray-600'>
-            Don&apos;t have an account?{' '}
+            {t('auth.noAccount')}{' '}
             <Link
               href={{
                 pathname: Routes.register,
@@ -65,7 +67,7 @@ export default function LoginPage() {
               }}
               className='font-medium text-brand-600 hover:underline'
             >
-              Sign up
+              {t('auth.signUp')}
             </Link>
           </p>
         </CardFooter>

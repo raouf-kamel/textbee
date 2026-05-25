@@ -5,18 +5,20 @@ import { toast } from '@/hooks/use-toast'
 import { CredentialResponse, GoogleLogin } from '@react-oauth/google'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useI18n } from '@/lib/i18n'
 
 export default function LoginWithGoogle() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect')
+  const { locale, t } = useI18n()
 
   const onGoogleLoginSuccess = async (
     credentialResponse: CredentialResponse
   ) => {
     toast({
-      title: 'Success',
-      description: 'You are logged in with Google',
+      title: t('auth.success'),
+      description: t('auth.googleLoginSuccess'),
       variant: 'default',
     })
     await signIn('google-id-token-login', {
@@ -28,8 +30,8 @@ export default function LoginWithGoogle() {
 
   const onGoogleLoginError = () => {
     toast({
-      title: 'Error',
-      description: 'Something went wrong',
+      title: t('auth.error'),
+      description: t('auth.somethingWentWrong'),
       variant: 'destructive',
     })
   }
@@ -41,7 +43,7 @@ export default function LoginWithGoogle() {
       width={'100%'}
       size='large'
       shape='pill'
-      locale='en'
+      locale={locale}
       theme='outline'
       text='continue_with'
     />

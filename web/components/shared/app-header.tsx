@@ -19,9 +19,12 @@ import { signOut } from 'next-auth/react'
 import { Routes } from '@/config/routes'
 import ThemeToggle from './theme-toggle'
 import { Session } from 'next-auth'
+import LanguageToggle from './language-toggle'
+import { useI18n } from '@/lib/i18n'
 
 export default function AppHeader({ session }: { session: Session }) {
   const router = useRouter()
+  const { direction, t } = useI18n()
 
   const handleLogout = () => {
     signOut()
@@ -62,12 +65,12 @@ export default function AppHeader({ session }: { session: Session }) {
         <DropdownMenuItem asChild>
           <Link href={Routes.dashboard} className='w-full flex items-center'>
             <LayoutDashboard className='mr-2 h-4 w-4' />
-            <span>Dashboard</span>
+            <span>{t('common.dashboard')}</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleLogout} className='text-red-600'>
           <LogOut className='mr-2 h-4 w-4' />
-          <span>Log out</span>
+          <span>{t('common.logout')}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -78,10 +81,13 @@ export default function AppHeader({ session }: { session: Session }) {
       <SheetTrigger asChild>
         <Button variant='ghost' className='md:hidden' size='icon'>
           <Menu className='h-5 w-5' />
-          <span className='sr-only'>Toggle menu</span>
+          <span className='sr-only'>Menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side='right' className='w-[300px] sm:w-[400px]'>
+      <SheetContent
+        side={direction === 'rtl' ? 'left' : 'right'}
+        className='w-[300px] sm:w-[400px]'
+      >
         <nav className='flex flex-col gap-4'>
           {isAuthenticated ? (
             <>
@@ -107,14 +113,14 @@ export default function AppHeader({ session }: { session: Session }) {
                 className='flex items-center gap-2 py-2'
               >
                 <LayoutDashboard className='h-4 w-4' />
-                Dashboard
+                {t('common.dashboard')}
               </Link>
               <Link
                 href={Routes.contribute}
                 className='flex items-center gap-2 py-2'
               >
                 <MessageSquarePlus className='h-4 w-4' />
-                Contribute
+                {t('common.contribute')}
               </Link>
               <Button
                 onClick={handleLogout}
@@ -122,20 +128,20 @@ export default function AppHeader({ session }: { session: Session }) {
                 className='justify-start text-red-600'
               >
                 <LogOut className='mr-2 h-4 w-4' />
-                Log out
+                {t('common.logout')}
               </Button>
             </>
           ) : (
             <>
               <Button asChild variant='ghost' className='justify-start'>
-                <Link href={Routes.login}>Log in</Link>
+                <Link href={Routes.login}>{t('common.login')}</Link>
               </Button>
               <Button
                 asChild
                 color='primary'
                 className='bg-primary hover:bg-primary/90 text-white rounded-full'
               >
-                <Link href={Routes.register}>Get started</Link>
+                <Link href={Routes.register}>{t('common.getStarted')}</Link>
               </Button>
             </>
           )}
@@ -170,12 +176,13 @@ export default function AppHeader({ session }: { session: Session }) {
         <div className='flex flex-1 items-center justify-end space-x-2'>
           <nav className='flex items-center space-x-6'>
             <ThemeToggle />
+            <LanguageToggle />
             <Link
               href={Routes.contribute}
               className='items-center gap-2 pr-8 hidden md:block'
             >
               <Button variant='outline' className='px-4 py-2 text-sm'>
-                Contribute
+                {t('common.contribute')}
               </Button>
             </Link>
 
@@ -184,13 +191,13 @@ export default function AppHeader({ session }: { session: Session }) {
             ) : (
               <div className='hidden md:flex md:items-center md:gap-2'>
                 <Button asChild variant='ghost'>
-                  <Link href={Routes.login}>Log in</Link>
+                  <Link href={Routes.login}>{t('common.login')}</Link>
                 </Button>
                 <Button
                   asChild
                   className='bg-primary hover:bg-primary/90 text-white rounded-full'
                 >
-                  <Link href={Routes.register}>Get started</Link>
+                  <Link href={Routes.register}>{t('common.getStarted')}</Link>
                 </Button>
               </div>
             )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -28,29 +28,14 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
+import { useI18n } from '@/lib/i18n'
 
-const resetPasswordSchema = z
-  .object({
-    email: z.string().email({ message: 'Invalid email address' }),
-    otp: z.string().min(4, { message: 'OTP is required' }),
-    newPassword: z
-      .string()
-      .min(8, { message: 'Password must be at least 8 characters long' }),
-    confirmPassword: z
-      .string()
-      .min(4, { message: 'Please confirm your password' }),
-  })
-  .superRefine((data, ctx) => {
-    if (data.newPassword !== data.confirmPassword) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Passwords must match',
-        path: ['confirmPassword'],
-      })
-    }
-  })
-
-type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>
+type ResetPasswordFormValues = {
+  email: string
+  otp: string
+  newPassword: string
+  confirmPassword: string
+}
 
 export default function ResetPasswordForm({
   email,
@@ -59,6 +44,32 @@ export default function ResetPasswordForm({
   email: string
   otp: string
 }) {
+  const { t } = useI18n()
+  const resetPasswordSchema = useMemo(
+    () =>
+      z
+        .object({
+          email: z.string().email({ message: t('auth.invalidEmail') }),
+          otp: z.string().min(4, { message: t('auth.otpRequired') }),
+          newPassword: z
+            .string()
+            .min(8, { message: t('auth.passwordTooShort') }),
+          confirmPassword: z
+            .string()
+            .min(4, { message: t('auth.confirmPasswordRequired') }),
+        })
+        .superRefine((data, ctx) => {
+          if (data.newPassword !== data.confirmPassword) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t('auth.passwordsMustMatch'),
+              path: ['confirmPassword'],
+            })
+          }
+        }),
+    [t]
+  )
+
   const form = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
@@ -75,7 +86,7 @@ export default function ResetPasswordForm({
     } catch (error) {
       console.error(error)
       form.setError('root.serverError', {
-        message: 'Failed to reset password',
+        message: t('auth.failedResetPassword'),
       })
     }
   }
@@ -85,10 +96,10 @@ export default function ResetPasswordForm({
       <Card className='w-[400px] shadow-lg'>
         <CardHeader className='space-y-1'>
           <CardTitle className='text-2xl font-bold text-center'>
-            Reset your password
+            {t('auth.resetPassword')}
           </CardTitle>
           <CardDescription className='text-center'>
-            Enter your new password below
+            {t('auth.newPasswordDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -102,7 +113,7 @@ export default function ResetPasswordForm({
                 name='email'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t('common.email')}</FormLabel>
                     <FormControl>
                       <Input placeholder='m@example.com' {...field} />
                     </FormControl>
@@ -115,7 +126,7 @@ export default function ResetPasswordForm({
                 name='otp'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>OTP</FormLabel>
+                    <FormLabel>{t('auth.otp')}</FormLabel>
                     <FormControl>
                       <Input placeholder='1234' {...field} />
                     </FormControl>
@@ -129,7 +140,7 @@ export default function ResetPasswordForm({
                 name='newPassword'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>New Password</FormLabel>
+                    <FormLabel>{t('auth.newPassword')}</FormLabel>
                     <FormControl>
                       <Input type='password' {...field} />
                     </FormControl>
@@ -143,7 +154,7 @@ export default function ResetPasswordForm({
                 name='confirmPassword'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel>{t('auth.confirmPassword')}</FormLabel>
                     <FormControl>
                       <Input type='password' {...field} />
                     </FormControl>
@@ -166,10 +177,10 @@ export default function ResetPasswordForm({
                 {form.formState.isSubmitting ? (
                   <>
                     {/* <Icons.spinner className="mr-2 h-4 w-4 animate-spin" /> */}
-                    Resetting password...
+                    {t('auth.resettingPassword')}
                   </>
                 ) : (
-                  'Reset password'
+                  t('auth.resetPassword')
                 )}
               </Button>
             </form>
@@ -177,10 +188,9 @@ export default function ResetPasswordForm({
           {form.formState.isSubmitted && form.formState.isSubmitSuccessful && (
             <Alert className='mt-4' variant='default'>
               {/* <Icons.checkCircle className="h-4 w-4" /> */}
-              <AlertTitle>Password reset successful</AlertTitle>
+              <AlertTitle>{t('auth.passwordResetSuccessTitle')}</AlertTitle>
               <AlertDescription>
-                Your password has been reset successfully. You can now login
-                with your new password.
+                {t('auth.passwordResetSuccessDescription')}
               </AlertDescription>
             </Alert>
           )}
@@ -190,7 +200,7 @@ export default function ResetPasswordForm({
             href={Routes.login}
             className='text-sm text-brand-600 hover:underline'
           >
-            Back to login
+            {t('auth.backToLogin')}
           </Link>
         </CardFooter>
       </Card>
