@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/tooltip'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/lib/i18n'
 
 function WebhookCardSkeleton() {
   return (
@@ -57,6 +58,7 @@ function WebhookCardSkeleton() {
 }
 
 export default function WebhooksSection() {
+  const { t } = useI18n()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const navigator = useRouter()
@@ -92,10 +94,10 @@ export default function WebhooksSection() {
         <div>
           <h1 className='text-xl sm:text-2xl font-bold flex flex-wrap items-center gap-2'>
             <Webhook className='h-5 w-5 sm:h-6 sm:w-6' />
-            Webhooks
+            {t('webhooks.title')}
           </h1>
           <p className='text-sm text-muted-foreground mt-2'>
-            Manage webhook notifications for your SMS events
+            {t('webhooks.description')}
           </p>
         </div>
         <div className='flex gap-x-4'>
@@ -110,15 +112,14 @@ export default function WebhooksSection() {
                     className='w-full sm:w-auto'
                   >
                     <PlusCircle className='mr-2 h-4 w-4' />
-                    Create Webhook
+                    {t('webhooks.create')}
                   </Button>
                 </div>
               </TooltipTrigger>
               {webhooks?.data?.length > 0 && (
                 <TooltipContent>
                   <p>
-                    You already have an active webhook subscription. You can
-                    edit or manage the existing webhook instead.
+                    {t('webhooks.alreadyActive')}
                   </p>
                 </TooltipContent>
               )}
@@ -130,7 +131,7 @@ export default function WebhooksSection() {
             className='w-full sm:w-auto'
           >
             <Bell className='mr-2 h-4 w-4' />
-            Notification Deliveries
+            {t('webhooks.deliveries')}
           </Button>
         </div>
       </div>
@@ -144,7 +145,7 @@ export default function WebhooksSection() {
             </div>
           ) : error ? (
             <div className='rounded-lg border border-destructive/50 p-4 text-destructive'>
-              Error: {error.message}
+              {t('common.error')}: {error.message}
             </div>
           ) : webhooks?.data?.length > 0 ? (
             <div className='grid gap-4'>
@@ -159,15 +160,14 @@ export default function WebhooksSection() {
           ) : (
             <div className='bg-muted/50 rounded-lg p-8 text-center'>
               <h3 className='text-lg font-medium mb-2'>
-                No webhook configured
+                {t('webhooks.noConfigured')}
               </h3>
               <p className='text-muted-foreground mb-4'>
-                Create a webhook to receive real-time notifications for SMS
-                events
+                {t('webhooks.noConfiguredDescription')}
               </p>
               <Button onClick={handleCreateClick} variant='default'>
                 <PlusCircle className='mr-2 h-4 w-4' />
-                Create Webhook
+                {t('webhooks.create')}
               </Button>
             </div>
           )}

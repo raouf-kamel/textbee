@@ -18,15 +18,16 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
+import { useI18n } from '@/lib/i18n'
 
 // Reusable components
-const ErrorAlert = ({ message }: { message: string }) => (
+const ErrorAlert = ({ title, message }: { title: string; message: string }) => (
   <Alert
     variant='destructive'
     className='bg-red-50 text-red-700 border-red-200'
   >
     <XCircle className='h-5 w-5 text-red-600' />
-    <AlertTitle className='text-lg font-semibold'>Error</AlertTitle>
+    <AlertTitle className='text-lg font-semibold'>{title}</AlertTitle>
     <AlertDescription>{message}</AlertDescription>
   </Alert>
 )
@@ -53,25 +54,26 @@ const LoadingSpinner = () => (
   </div>
 )
 
-const DashboardButton = () => (
+const DashboardButton = ({ label }: { label: string }) => (
   <Button className='w-full py-5 mt-2 text-white' asChild>
     <Link href={Routes.dashboard}>
-      Go to Dashboard
+      {label}
       <ArrowRight className='ml-2 h-5 w-5' />
     </Link>
   </Button>
 )
 
-const LoginButton = () => (
+const LoginButton = ({ label }: { label: string }) => (
   <Button className='w-full py-5 mt-2' asChild>
     <Link href='/login'>
-      Go to Login
+      {label}
       <ArrowRight className='ml-2 h-5 w-5' />
     </Link>
   </Button>
 )
 
 export default function VerifyEmailPage() {
+  const { t } = useI18n()
   const router = useRouter()
   const searchParams = useSearchParams()
   const userId = searchParams.get('userId')
@@ -106,11 +108,11 @@ export default function VerifyEmailPage() {
       verificationCode,
     }),
     onSuccess: () => {
-      setSuccessMessage('Your email has been successfully verified')
+      setSuccessMessage(t('verifyEmail.verifiedSuccess'))
       setErrorMessage('')
     },
     onError: (error: any) => {
-      setErrorMessage(error.message || 'Failed to verify email')
+      setErrorMessage(error.message || t('verifyEmail.verifyFailed'))
     },
   })
 
@@ -127,12 +129,12 @@ export default function VerifyEmailPage() {
       if (!verificationEmailSent) {
         router.push('/verify-email?verificationEmailSent=true')
       } else {
-        setSuccessMessage('Verification email has been sent to your inbox')
+        setSuccessMessage(t('verifyEmail.emailSent'))
         setErrorMessage('')
       }
     },
     onError: (error: any) => {
-      setErrorMessage(error.message || 'Failed to send verification email')
+      setErrorMessage(error.message || t('verifyEmail.sendFailed'))
     },
   })
 
@@ -140,12 +142,12 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     if (userId && verificationCode && !isVerifying && !successMessage && !errorMessage) {
       if (isEmailVerified) {
-        setSuccessMessage('Your email has already been verified')
+        setSuccessMessage(t('verifyEmail.alreadyVerified'))
       } else if (!isCheckingAuth) {
         verifyEmail()
       }
     }
-  }, [userId, verificationCode, isCheckingAuth, isEmailVerified, isVerifying, successMessage, errorMessage, verifyEmail])
+  }, [userId, verificationCode, isCheckingAuth, isEmailVerified, isVerifying, successMessage, errorMessage, verifyEmail, t])
 
   // Render content based on current state
   const renderContent = () => {
@@ -154,8 +156,10 @@ export default function VerifyEmailPage() {
       return (
         <>
           <CardHeader>
-            <CardTitle className='text-2xl font-bold'>Email Verification</CardTitle>
-            <CardDescription>Checking verification status...</CardDescription>
+            <CardTitle className='text-2xl font-bold'>
+              {t('verifyEmail.title')}
+            </CardTitle>
+            <CardDescription>{t('verifyEmail.checking')}</CardDescription>
           </CardHeader>
           <CardContent>
             <LoadingSpinner />
@@ -169,22 +173,24 @@ export default function VerifyEmailPage() {
       return (
         <>
           <CardHeader>
-            <CardTitle className='text-2xl font-bold'>Email Verification</CardTitle>
+            <CardTitle className='text-2xl font-bold'>
+              {t('verifyEmail.title')}
+            </CardTitle>
             <CardDescription>
-              {isVerifying ? 'Verifying your email address...' : 'Email Verification Status'}
+              {isVerifying ? t('verifyEmail.verifying') : t('verifyEmail.status')}
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
             {isVerifying ? (
               <LoadingSpinner />
             ) : successMessage ? (
-              <SuccessAlert title="Success" message={successMessage} />
+              <SuccessAlert title={t('auth.success')} message={successMessage} />
             ) : errorMessage ? (
-              <ErrorAlert message={errorMessage} />
+              <ErrorAlert title={t('common.error')} message={errorMessage} />
             ) : null}
           </CardContent>
           <CardFooter>
-            {successMessage && <DashboardButton />}
+            {successMessage && <DashboardButton label={t('verifyEmail.goDashboard')} />}
           </CardFooter>
         </>
       )
@@ -195,33 +201,34 @@ export default function VerifyEmailPage() {
       return (
         <>
           <CardHeader>
-            <CardTitle className='text-2xl font-bold'>Check Your Email</CardTitle>
+            <CardTitle className='text-2xl font-bold'>
+              {t('verifyEmail.checkEmail')}
+            </CardTitle>
             <CardDescription>
-              We've sent you a verification email. Please check your inbox and click
-              the link to verify your account.
+              {t('verifyEmail.checkEmailDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
             {successMessage && (
-              <InfoAlert title="Email Sent" message={successMessage} />
+              <InfoAlert title={t('verifyEmail.emailSentTitle')} message={successMessage} />
             )}
             {errorMessage && (
-              <ErrorAlert message={errorMessage} />
+              <ErrorAlert title={t('common.error')} message={errorMessage} />
             )}
             {isEmailVerified && (
               <SuccessAlert 
-                title="Already Verified" 
-                message="Your email has already been verified" 
+                title={t('verifyEmail.alreadyVerifiedTitle')}
+                message={t('verifyEmail.alreadyVerified')}
               />
             )}
           </CardContent>
           <CardFooter className='flex flex-col gap-3'>
             {isEmailVerified ? (
-              <DashboardButton />
+              <DashboardButton label={t('verifyEmail.goDashboard')} />
             ) : (
               <div className='flex items-center gap-2 justify-center w-full'>
                 <span className='text-sm text-gray-600'>
-                  Didn't receive the email?
+                  {t('verifyEmail.didntReceive')}
                 </span>
                 <Button
                   variant='link'
@@ -232,10 +239,10 @@ export default function VerifyEmailPage() {
                   {isSending ? (
                     <>
                       <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      Sending...
+                      {t('verifyEmail.sending')}
                     </>
                   ) : (
-                    'Click to resend'
+                    t('verifyEmail.resend')
                   )}
                 </Button>
               </div>
@@ -249,27 +256,29 @@ export default function VerifyEmailPage() {
     return (
       <>
         <CardHeader>
-          <CardTitle className='text-2xl font-bold'>Email Verification</CardTitle>
+          <CardTitle className='text-2xl font-bold'>
+            {t('verifyEmail.title')}
+          </CardTitle>
           <CardDescription>
             {isLoggedIn 
               ? isEmailVerified
-                ? 'Your email is already verified'
-                : 'Verify your email address to access all features'
-              : 'You need to be logged in to verify your email'
+                ? t('verifyEmail.alreadyVerifiedDescription')
+                : t('verifyEmail.verifyToAccess')
+              : t('verifyEmail.loginRequired')
             }
           </CardDescription>
         </CardHeader>
         <CardContent className='space-y-4'>
           {successMessage && (
-            <InfoAlert title="Email Sent" message={successMessage} />
+            <InfoAlert title={t('verifyEmail.emailSentTitle')} message={successMessage} />
           )}
           {errorMessage && (
-            <ErrorAlert message={errorMessage} />
+            <ErrorAlert title={t('common.error')} message={errorMessage} />
           )}
           {isEmailVerified && (
             <SuccessAlert 
-              title="Already Verified" 
-              message="Your email has already been verified" 
+              title={t('verifyEmail.alreadyVerifiedTitle')}
+              message={t('verifyEmail.alreadyVerified')}
             />
           )}
           {!isLoggedIn && (
@@ -278,9 +287,11 @@ export default function VerifyEmailPage() {
               className='bg-red-50 text-red-700 border-red-200'
             >
               <XCircle className='h-5 w-5 text-red-600' />
-              <AlertTitle className='text-lg font-semibold'>Not Logged In</AlertTitle>
+              <AlertTitle className='text-lg font-semibold'>
+                {t('verifyEmail.notLoggedIn')}
+              </AlertTitle>
               <AlertDescription>
-                You need to be logged in to verify your email
+                {t('verifyEmail.loginRequired')}
               </AlertDescription>
             </Alert>
           )}
@@ -288,7 +299,7 @@ export default function VerifyEmailPage() {
         <CardFooter>
           {isLoggedIn ? (
             isEmailVerified ? (
-              <DashboardButton />
+              <DashboardButton label={t('verifyEmail.goDashboard')} />
             ) : (
               <Button
                 className='w-full py-5'
@@ -300,11 +311,11 @@ export default function VerifyEmailPage() {
                 ) : (
                   <Mail className='mr-2 h-5 w-5' />
                 )}
-                Send Verification Email
+                {t('verifyEmail.sendVerificationEmail')}
               </Button>
             )
           ) : (
-            <LoginButton />
+            <LoginButton label={t('verifyEmail.goLogin')} />
           )}
         </CardFooter>
       </>

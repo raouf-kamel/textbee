@@ -13,6 +13,7 @@ import { WebhookData } from '@/lib/types'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { ApiEndpoints } from '@/config/api'
 import { useQueryClient } from '@tanstack/react-query'
+import { useI18n } from '@/lib/i18n'
 
 interface WebhookCardProps {
   webhook: WebhookData
@@ -22,6 +23,7 @@ interface WebhookCardProps {
 
 export function WebhookCard({ webhook, onEdit, onDelete }: WebhookCardProps) {
   const { toast } = useToast()
+  const { t } = useI18n()
   const [isLoading, setIsLoading] = useState(false)
   const queryClient = useQueryClient()
   const [showSecret, setShowSecret] = useState(false)
@@ -39,15 +41,19 @@ export function WebhookCard({ webhook, onEdit, onDelete }: WebhookCardProps) {
       })
 
       toast({
-        title: `Webhook ${checked ? 'enabled' : 'disabled'}`,
-        description: `Webhook notifications are now ${
-          checked ? 'enabled' : 'disabled'
-        }.`,
+        title: checked
+          ? t('webhooks.enabledToast')
+          : t('webhooks.disabledToast'),
+        description: checked
+          ? t('webhooks.enabledDescription')
+          : t('webhooks.disabledDescription'),
       })
     } catch (error) {
       toast({
-        title: 'Error',
-        description: `Failed to ${checked ? 'enable' : 'disable'} webhook`,
+        title: t('common.error'),
+        description: t('webhooks.toggleFailed', {
+          action: checked ? t('webhooks.enable') : t('webhooks.disable'),
+        }),
         variant: 'destructive',
       })
     } finally {
@@ -68,13 +74,15 @@ export function WebhookCard({ webhook, onEdit, onDelete }: WebhookCardProps) {
       <CardHeader className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4'>
         <div className='space-y-1'>
           <div className='flex flex-wrap items-center gap-2'>
-            <h3 className='text-base font-semibold'>Webhook Endpoint</h3>
+            <h3 className='text-base font-semibold'>
+              {t('webhooks.endpoint')}
+            </h3>
             <Badge variant={webhook.isActive ? 'default' : 'secondary'}>
-              {webhook.isActive ? 'Active' : 'Inactive'}
+              {webhook.isActive ? t('webhooks.active') : t('webhooks.inactive')}
             </Badge>
           </div>
           <p className='text-sm text-muted-foreground'>
-            Notifications for SMS events
+            {t('webhooks.notifications')}
           </p>
         </div>
         <div className='flex flex-wrap items-center gap-2'>
@@ -85,7 +93,7 @@ export function WebhookCard({ webhook, onEdit, onDelete }: WebhookCardProps) {
           />
           <Button variant='outline' size='sm' onClick={onEdit}>
             <Edit2 className='h-4 w-4 sm:mr-2' />
-            <span className='hidden sm:inline'>Edit</span>
+            <span className='hidden sm:inline'>{t('common.edit')}</span>
           </Button>
           <DeleteWebhookButton onDelete={onDelete} />
         </div>
@@ -93,16 +101,24 @@ export function WebhookCard({ webhook, onEdit, onDelete }: WebhookCardProps) {
       <CardContent>
         <div className='space-y-4'>
           <div>
-            <label className='text-sm font-medium'>Delivery URL</label>
+            <label className='text-sm font-medium'>
+              {t('webhooks.deliveryUrl')}
+            </label>
             <div className='flex items-center gap-1 mt-1'>
               <code className='flex-1 bg-muted px-3 py-2 rounded-md text-sm break-all'>
                 {webhook.deliveryUrl}
               </code>
-              <CopyButton value={webhook.deliveryUrl} label='Copy URL' className="ml-1" />
+              <CopyButton
+                value={webhook.deliveryUrl}
+                label={t('webhooks.copyUrl')}
+                className="ml-1"
+              />
             </div>
           </div>
           <div>
-            <label className='text-sm font-medium'>Signing Secret</label>
+            <label className='text-sm font-medium'>
+              {t('webhooks.signingSecret')}
+            </label>
             <div className='flex items-center gap-1 mt-1'>
               <code className='flex-1 bg-muted px-3 py-2 rounded-md text-sm font-mono break-all'>
                 {showSecret ? webhook.signingSecret : maskSecret(webhook.signingSecret)}
@@ -120,12 +136,17 @@ export function WebhookCard({ webhook, onEdit, onDelete }: WebhookCardProps) {
                     <Eye className="h-4 w-4" />
                   )}
                 </Button>
-                <CopyButton value={webhook.signingSecret} label='Copy Secret' />
+                <CopyButton
+                  value={webhook.signingSecret}
+                  label={t('webhooks.copySecret')}
+                />
               </div>
             </div>
           </div>
           <div>
-            <label className='text-sm font-medium'>Events</label>
+            <label className='text-sm font-medium'>
+              {t('webhooks.events')}
+            </label>
             <div className='flex flex-wrap gap-2 mt-1'>
               {webhook.events.map((event) => (
                 <Badge key={event} variant='secondary'>

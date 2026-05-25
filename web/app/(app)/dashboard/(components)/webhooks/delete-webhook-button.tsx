@@ -13,12 +13,15 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Trash2 } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 interface DeleteWebhookButtonProps {
   onDelete: () => void
 }
 
 export function DeleteWebhookButton({ onDelete }: DeleteWebhookButtonProps) {
+  const { t } = useI18n()
+
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
@@ -28,20 +31,19 @@ export function DeleteWebhookButton({ onDelete }: DeleteWebhookButtonProps) {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Webhook</AlertDialogTitle>
+          <AlertDialogTitle>{t('webhooks.deleteTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete this webhook? This action cannot be
-            undone.
+            {t('webhooks.deleteDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onDelete}
             disabled
             className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
           >
-            Delete
+            {t('common.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
