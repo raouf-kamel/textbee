@@ -320,10 +320,24 @@ export class UpdateSMSStatusDTO {
   @ApiProperty({
     type: String,
     required: true,
-    description: 'The status of the SMS (sent, delivered, failed)',
-    enum: ['sent', 'delivered', 'failed'],
+    description: 'The status of the SMS',
+    enum: ['received_by_device', 'sending', 'sent', 'delivered', 'failed', 'delivery_failed'],
   })
   status: string
+
+  @ApiProperty({
+    type: Number,
+    required: false,
+    description: 'The time the message was received by the device (in milliseconds)',
+  })
+  receivedByDeviceAtInMillis?: number
+
+  @ApiProperty({
+    type: Number,
+    required: false,
+    description: 'The time the device started sending the message (in milliseconds)',
+  })
+  sendingAtInMillis?: number
 
   @ApiProperty({
     type: Number,

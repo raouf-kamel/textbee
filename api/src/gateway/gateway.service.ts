@@ -39,6 +39,112 @@ export class GatewayService {
     private smsQueueService: SmsQueueService,
   ) {}
 
+  private getFcmErrorCode(error: { code?: string; message?: string } | null | undefined): string {
+    if (!error?.code) return 'FCM_DELIVERY_FAILED'
+    const code = String(error.code).toLowerCase().replace(/^messaging\//, '')
+    if (code === 'registration-token-not-registered' || code === 'unregistered') {
+      return 'FCM_TOKEN_NOT_REGISTERED'
+    }
+    if (code === 'invalid-registration-token' || code === 'invalid-argument') {
+      return 'FCM_INVALID_REGISTRATION_TOKEN'
+    }
+    if (code === 'mismatched-credential') {
+      return 'FCM_PROJECT_MISMATCH'
+    }
+    return `FCM_DELIVERY_FAILED_${error.code}`
+  }
+
+  private getFcmErrorMessage(error: { code?: string; message?: string } | null | undefined): string {
+    return `FCM_DELIVERY_FAILED: ${error?.message || 'FCM delivery failed'}`
+  }
+
+  private getSmsIdFromFcmMessage(fcmMessage: Message): string | null {
+    try {
+      const rawSmsData = fcmMessage.data?.smsData
+      if (!rawSmsData) return null
+      const smsData = JSON.parse(rawSmsData)
+      return smsData?.smsId ? String(smsData.smsId) : null
+    } catch {
+      return null
+    }
+  }
+
+  private async updateSmsDispatchResults(
+    fcmMessages: Message[],
+    response: BatchResponse,
+  ) {
+    const now = new Date()
+    const dispatchedSmsIds: string[] = []
+    const failedUpdates: Array<{
+      smsId: string
+      errorCode: string
+      errorMessage: string
+    }> = []
+
+    for (let i = 0; i < response.responses.length; i++) {
+      const smsId = this.getSmsIdFromFcmMessage(fcmMessages[i])
+      if (!smsId) continue
+
+      const fcmResponse = response.responses[i]
+      if (fcmResponse.success) {
+        dispatchedSmsIds.push(smsId)
+      } else {
+        failedUpdates.push({
+          smsId,
+          errorCode: this.getFcmErrorCode(fcmResponse.error),
+          errorMessage: this.getFcmErrorMessage(fcmResponse.error),
+        })
+      }
+    }
+
+    if (dispatchedSmsIds.length > 0) {
+      await this.smsModel.updateMany(
+        { _id: { $in: dispatchedSmsIds } as any, status: { $ne: 'cancelled' } },
+        { $set: { status: 'dispatched', dispatchedAt: now } },
+      )
+    }
+
+    if (failedUpdates.length > 0) {
+      const failedAt = new Date()
+      for (const failedUpdate of failedUpdates) {
+        await this.smsModel.updateOne(
+          { _id: failedUpdate.smsId as any, status: { $ne: 'cancelled' } },
+          {
+            $set: {
+              status: 'failed',
+              failedAt,
+              errorCode: failedUpdate.errorCode,
+              errorMessage: failedUpdate.errorMessage,
+            },
+          },
+        )
+      }
+    }
+  }
+
+  private async markFcmMessagesFailed(
+    fcmMessages: Message[],
+    error: { code?: string; message?: string } | null | undefined,
+  ) {
+    const failedSmsIds = fcmMessages
+      .map((message) => this.getSmsIdFromFcmMessage(message))
+      .filter(Boolean) as string[]
+
+    if (failedSmsIds.length === 0) return
+
+    await this.smsModel.updateMany(
+      { _id: { $in: failedSmsIds } as any, status: { $ne: 'cancelled' } },
+      {
+        $set: {
+          status: 'failed',
+          failedAt: new Date(),
+          errorCode: this.getFcmErrorCode(error),
+          errorMessage: this.getFcmErrorMessage(error),
+        },
+      },
+    )
+  }
+
   async registerDevice(
     input: RegisterDeviceInputDTO,
     user: User,
@@ -383,8 +489,13 @@ export class GatewayService {
       const response = await firebaseAdmin.messaging().sendEach(fcmMessages)
 
       console.log(response)
+      await this.updateSmsDispatchResults(fcmMessages, response)
 
       if (response.successCount === 0) {
+        await this.smsBatchModel.findByIdAndUpdate(smsBatch._id, {
+          $set: { status: 'failed', error: 'Failed to dispatch SMS to device via FCM' },
+        })
+
         throw new HttpException(
           {
             success: false,
@@ -416,6 +527,10 @@ export class GatewayService {
 
       return response
     } catch (e) {
+      if (!(e instanceof HttpException)) {
+        await this.markFcmMessagesFailed(fcmMessages, e)
+      }
+
       this.smsBatchModel
         .findByIdAndUpdate(smsBatch._id, {
           $set: { status: 'failed', error: e.message },
@@ -672,6 +787,7 @@ export class GatewayService {
 
         console.log(response)
         fcmResponses.push(response)
+        await this.updateSmsDispatchResults(batch, response)
 
         this.deviceModel
           .findByIdAndUpdate(deviceId, {
@@ -692,6 +808,8 @@ export class GatewayService {
             console.error('failed to update sms batch status to completed')
           })
       } catch (e) {
+        await this.markFcmMessagesFailed(batch, e)
+
         console.log('Failed to send SMS: FCM')
         console.log(e)
 
@@ -977,18 +1095,53 @@ export class GatewayService {
     
     // Normalize status to lowercase for comparison
     const normalizedStatus = dto.status.toLowerCase();
+    const currentStatus = String(sms.status || '').toLowerCase()
+    const statusRank: Record<string, number> = {
+      unknown: 0,
+      pending: 0,
+      dispatched: 1,
+      received_by_device: 2,
+      sending: 3,
+      sent: 4,
+      delivered: 5,
+      failed: 5,
+      delivery_failed: 5,
+      cancelled: 6,
+    }
+
+    if (currentStatus === 'cancelled') {
+      return {
+        success: true,
+        message: 'SMS was already cancelled; status update ignored',
+      };
+    }
+
+    if ((statusRank[normalizedStatus] ?? 0) < (statusRank[currentStatus] ?? 0)) {
+      return {
+        success: true,
+        message: 'SMS status update ignored because a newer status is already recorded',
+      };
+    }
     
     const updateData: any = {
       status: normalizedStatus, // Store normalized status
     };
     
     // Update timestamps based on status
-    if (normalizedStatus === 'sent' && dto.sentAtInMillis) {
-      updateData.sentAt = new Date(dto.sentAtInMillis);
-    } else if (normalizedStatus === 'delivered' && dto.deliveredAtInMillis) {
-      updateData.deliveredAt = new Date(dto.deliveredAtInMillis);
-    } else if (normalizedStatus === 'failed' && dto.failedAtInMillis) {
-      updateData.failedAt = new Date(dto.failedAtInMillis);
+    if (normalizedStatus === 'received_by_device') {
+      updateData.receivedByDeviceAt = new Date(dto.receivedByDeviceAtInMillis || Date.now());
+    } else if (normalizedStatus === 'sending') {
+      updateData.sendingAt = new Date(dto.sendingAtInMillis || Date.now());
+    } else if (normalizedStatus === 'sent') {
+      updateData.sentAt = new Date(dto.sentAtInMillis || Date.now());
+    } else if (normalizedStatus === 'delivered') {
+      updateData.deliveredAt = new Date(dto.deliveredAtInMillis || Date.now());
+    } else if (normalizedStatus === 'failed') {
+      updateData.failedAt = new Date(dto.failedAtInMillis || Date.now());
+      updateData.errorCode = dto.errorCode;
+      updateData.errorMessage = dto.errorMessage || 'Unknown error';
+    } else if (normalizedStatus === 'delivery_failed') {
+      updateData.failedAt = new Date(dto.failedAtInMillis || Date.now());
       updateData.errorCode = dto.errorCode;
       updateData.errorMessage = dto.errorMessage || 'Unknown error';
     }
@@ -1009,8 +1162,10 @@ const updatedSms = await this.smsModel.findByIdAndUpdate(
         // Check if all SMS in batch have the same status (case insensitive)
         const allHaveSameStatus = allSmsInBatch.every(sms => sms.status.toLowerCase() === normalizedStatus);
         
-        if (allHaveSameStatus) {
-          const smsBatchStatus = normalizedStatus === 'failed' ? 'failed' : 'completed';
+        const terminalStatuses = ['sent', 'delivered', 'failed', 'delivery_failed'];
+
+        if (allHaveSameStatus && terminalStatuses.includes(normalizedStatus)) {
+          const smsBatchStatus = ['failed', 'delivery_failed'].includes(normalizedStatus) ? 'failed' : 'completed';
           await this.smsBatchModel.findByIdAndUpdate(dto.smsBatchId, { 
             $set: { status: smsBatchStatus } 
           });
@@ -1050,6 +1205,52 @@ const updatedSms = await this.smsModel.findByIdAndUpdate(
       success: true,
       message: 'SMS status updated successfully',
     };
+  }
+
+  async checkSMSSendEligibility(deviceId: string, smsId: string): Promise<any> {
+    const sms = await this.smsModel.findById(smsId)
+
+    if (!sms) {
+      throw new HttpException(
+        {
+          success: false,
+          error: 'SMS not found',
+        },
+        HttpStatus.NOT_FOUND,
+      )
+    }
+
+    if (sms.device.toString() !== deviceId) {
+      throw new HttpException(
+        {
+          success: false,
+          error: 'SMS does not belong to this device',
+        },
+        HttpStatus.FORBIDDEN,
+      )
+    }
+
+    const status = String(sms.status || '').toLowerCase()
+    if (status === 'cancelled') {
+      return {
+        canSend: false,
+        status,
+        reason: 'Message was cancelled by an admin',
+      }
+    }
+
+    if (['sent', 'delivered', 'failed', 'delivery_failed'].includes(status)) {
+      return {
+        canSend: false,
+        status,
+        reason: 'Message already has a terminal status',
+      }
+    }
+
+    return {
+      canSend: true,
+      status,
+    }
   }
 
   async getStatsForUser(user: User) {

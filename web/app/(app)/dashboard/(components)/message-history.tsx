@@ -77,6 +77,24 @@ const getStatusBadge = (status: string) => {
         icon: <Check className='h-3 w-3' />,
         label: 'Sent',
       }
+    case 'dispatched':
+      return {
+        color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+        icon: <Timer className='h-3 w-3' />,
+        label: 'FCM dispatched',
+      }
+    case 'received_by_device':
+      return {
+        color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+        icon: <Timer className='h-3 w-3' />,
+        label: 'On device',
+      }
+    case 'sending':
+      return {
+        color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+        icon: <Timer className='h-3 w-3' />,
+        label: 'Sending',
+      }
     case 'delivered':
       return {
         color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
@@ -88,6 +106,12 @@ const getStatusBadge = (status: string) => {
         color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
         icon: <X className='h-3 w-3' />,
         label: 'Failed',
+      }
+    case 'delivery_failed':
+      return {
+        color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+        icon: <X className='h-3 w-3' />,
+        label: 'Delivery failed',
       }
     default:
       return {

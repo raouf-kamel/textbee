@@ -346,7 +346,7 @@ export class AdminService {
       this.deviceModel
         .find()
         .select(
-          '_id user name brand manufacturer model os osVersion appVersionName appVersionCode appVersionInfo enabled heartbeatEnabled lastHeartbeat sentSMSCount receivedSMSCount fcmTokenInvalidatedAt fcmTokenInvalidReason batteryInfo networkInfo createdAt',
+          '_id user name brand manufacturer model os osVersion appVersionName appVersionCode appVersionInfo enabled heartbeatEnabled lastHeartbeat sentSMSCount receivedSMSCount smsSendDelaySeconds fcmTokenInvalidatedAt fcmTokenInvalidReason batteryInfo networkInfo createdAt',
         )
         .populate({ path: 'user', select: '_id name email' })
         .sort({ lastHeartbeat: 1 })
@@ -355,7 +355,7 @@ export class AdminService {
         {
           $match: {
             type: 'SENT',
-            status: { $in: ['pending', 'dispatched'] },
+            status: { $in: ['pending', 'dispatched', 'received_by_device', 'sending'] },
           },
         },
         {
@@ -408,6 +408,7 @@ export class AdminService {
         heartbeatAgeMinutes,
         sentSMSCount: device.sentSMSCount ?? 0,
         receivedSMSCount: device.receivedSMSCount ?? 0,
+        smsSendDelaySeconds: device.smsSendDelaySeconds ?? 5,
         pendingSMSCount,
         isOnline,
         isStale,
@@ -517,9 +518,16 @@ export class AdminService {
     const now = Date.now()
     const dataWithWaiting = data.map((message: any) => {
       const status = String(message.status || '').toLowerCase()
-      const waitingFrom = message.requestedAt || message.createdAt
+      const waitingFrom =
+        status === 'sending'
+          ? message.sendingAt
+          : status === 'received_by_device'
+            ? message.receivedByDeviceAt
+            : status === 'dispatched'
+              ? message.dispatchedAt
+              : message.requestedAt || message.createdAt
       const waitingMinutes =
-        ['pending', 'dispatched'].includes(status) && waitingFrom
+        ['pending', 'dispatched', 'received_by_device', 'sending'].includes(status) && waitingFrom
           ? Math.max(0, Math.floor((now - new Date(waitingFrom).getTime()) / 60000))
           : null
 
@@ -554,8 +562,8 @@ export class AdminService {
       throw new NotFoundException('Message not found')
     }
 
-    if (!['pending', 'dispatched'].includes(message.status)) {
-      throw new BadRequestException('Only pending or dispatched messages can be cancelled')
+    if (!['pending', 'dispatched', 'received_by_device'].includes(message.status)) {
+      throw new BadRequestException('Only pending, dispatched, or device-received messages can be cancelled')
     }
 
     const previousStatus = message.status

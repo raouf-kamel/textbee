@@ -177,6 +177,17 @@ export class GatewayController {
     return { data };
   }
 
+  @ApiOperation({ summary: 'Check whether a device should still send an SMS' })
+  @UseGuards(AuthGuard, CanModifyDevice)
+  @Get('/devices/:id/sms/:smsId/send-eligibility')
+  async checkSMSSendEligibility(
+    @Param('id') deviceId: string,
+    @Param('smsId') smsId: string,
+  ) {
+    const data = await this.gatewayService.checkSMSSendEligibility(deviceId, smsId);
+    return { data };
+  }
+
   @ApiOperation({ summary: 'Get a single SMS by ID' })
   @UseGuards(AuthGuard, CanModifyDevice)
   @Get('/devices/:id/sms/:smsId')

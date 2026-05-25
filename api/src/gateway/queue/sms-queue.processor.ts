@@ -136,7 +136,7 @@ export class SmsQueueProcessor {
         const failedAt = new Date()
         for (const failedUpdate of failedUpdates) {
           await this.smsModel.updateOne(
-            { _id: failedUpdate.smsId as any },
+            { _id: failedUpdate.smsId as any, status: { $ne: 'cancelled' } },
             {
               $set: {
                 status: 'failed',
@@ -151,7 +151,7 @@ export class SmsQueueProcessor {
 
       if (dispatchedSmsIds.length > 0) {
         await this.smsModel.updateMany(
-          { _id: { $in: dispatchedSmsIds } as any },
+          { _id: { $in: dispatchedSmsIds } as any, status: { $ne: 'cancelled' } },
           {
             $set: { status: 'dispatched', dispatchedAt: now },
           },
@@ -228,7 +228,7 @@ export class SmsQueueProcessor {
       if (failedSmsIds.length > 0) {
         const failedAt = new Date()
         await this.smsModel.updateMany(
-          { _id: { $in: failedSmsIds } as any },
+          { _id: { $in: failedSmsIds } as any, status: { $ne: 'cancelled' } },
           {
             $set: {
               status: 'failed',

@@ -17,11 +17,11 @@ export class SmsStatusUpdateTask {
 
   /**
    * Cron job that runs every 5 minutes to update the status of SMS messages
-   * that have been pending or dispatched for more than 20 minutes without any status updates.
+   * that have been waiting for more than 20 minutes without any status updates.
    */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async handlePendingSmsTimeout() {
-    this.logger.log('Running cron job to update stale pending and dispatched SMS messages');
+    this.logger.log('Running cron job to update stale waiting SMS messages');
 
     const twentyMinutesAgo = new Date();
     twentyMinutesAgo.setMinutes(twentyMinutesAgo.getMinutes() - 20);
@@ -61,6 +61,40 @@ export class SmsStatusUpdateTask {
         `Updated ${dispatchedResult.modifiedCount} SMS messages from 'dispatched' to 'unknown' status`,
       );
 
+      const receivedByDeviceResult = await this.smsModel.updateMany(
+        {
+          status: 'received_by_device',
+          receivedByDeviceAt: { $lt: twentyMinutesAgo },
+        },
+        {
+          $set: {
+            status: 'unknown',
+            errorMessage:
+              'Status update timeout - device received the message but did not start sending after 20 minutes',
+          },
+        },
+      );
+      this.logger.log(
+        `Updated ${receivedByDeviceResult.modifiedCount} SMS messages from 'received_by_device' to 'unknown' status`,
+      );
+
+      const sendingResult = await this.smsModel.updateMany(
+        {
+          status: 'sending',
+          sendingAt: { $lt: twentyMinutesAgo },
+        },
+        {
+          $set: {
+            status: 'unknown',
+            errorMessage:
+              'Status update timeout - device started sending but did not report final status after 20 minutes',
+          },
+        },
+      );
+      this.logger.log(
+        `Updated ${sendingResult.modifiedCount} SMS messages from 'sending' to 'unknown' status`,
+      );
+
       const batchResult = await this.smsBatchModel.updateMany(
         {
           status: 'pending',
@@ -81,4 +115,4 @@ export class SmsStatusUpdateTask {
       this.logger.error('Error updating stale pending SMS messages', error);
     }
   }
-} 
+}

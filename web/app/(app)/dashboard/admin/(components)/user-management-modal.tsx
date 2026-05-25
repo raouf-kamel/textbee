@@ -76,6 +76,8 @@ type AdminMessage = {
   requestedAt?: string
   receivedAt?: string
   dispatchedAt?: string
+  receivedByDeviceAt?: string
+  sendingAt?: string
   sentAt?: string
   deliveredAt?: string
   failedAt?: string
@@ -190,6 +192,9 @@ function formatMessageDate(message: AdminMessage) {
   const timestamp =
     message.requestedAt ||
     message.receivedAt ||
+    message.dispatchedAt ||
+    message.receivedByDeviceAt ||
+    message.sendingAt ||
     message.sentAt ||
     message.deliveredAt ||
     message.failedAt ||
@@ -209,11 +214,44 @@ function getMessageNumber(message: AdminMessage) {
 function getMessageStatusTone(status?: string) {
   const normalized = status?.toLowerCase() || 'pending'
   if (normalized === 'delivered') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-  if (normalized === 'sent' || normalized === 'dispatched') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-  if (normalized === 'failed') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+  if (['sent', 'dispatched', 'received_by_device', 'sending'].includes(normalized)) return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+  if (normalized === 'failed' || normalized === 'delivery_failed') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
   if (normalized === 'cancelled') return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
   if (normalized === 'received') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
   return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+}
+
+function getMessageStatusLabel(status?: string) {
+  const normalized = status?.toLowerCase() || 'pending'
+  const labels: Record<string, string> = {
+    pending: 'Pending',
+    dispatched: 'FCM dispatched',
+    received_by_device: 'On device',
+    sending: 'Sending',
+    sent: 'Sent',
+    delivered: 'Delivered',
+    failed: 'Failed',
+    delivery_failed: 'Delivery failed',
+    received: 'Received',
+    unknown: 'Unknown',
+    cancelled: 'Cancelled',
+  }
+  return labels[normalized] || normalized.replaceAll('_', ' ')
+}
+
+function getMessageStageText(message: AdminMessage) {
+  const status = message.status?.toLowerCase() || 'pending'
+  if (status === 'pending') return 'Waiting for server queue or FCM dispatch'
+  if (status === 'dispatched') return 'FCM accepted; waiting for phone confirmation'
+  if (status === 'received_by_device') return 'Phone received it; waiting in device queue'
+  if (status === 'sending') return 'Phone is trying to send through the SIM'
+  if (status === 'sent') return 'Carrier accepted the SMS from the phone'
+  if (status === 'delivered') return 'Carrier reported delivery'
+  if (status === 'delivery_failed') return 'Carrier delivery report failed'
+  if (status === 'failed') return 'Sending failed before delivery'
+  if (status === 'cancelled') return 'Cancelled from admin controls'
+  if (status === 'unknown') return 'No update arrived before timeout'
+  return 'Status recorded'
 }
 
 function formatWaitingTime(waitingMinutes?: number | null) {
@@ -237,7 +275,7 @@ function getWaitingTone(waitingMinutes?: number | null) {
 
 function canCancelMessage(message: AdminMessage) {
   const status = message.status?.toLowerCase()
-  return status === 'pending' || status === 'dispatched'
+  return status === 'pending' || status === 'dispatched' || status === 'received_by_device'
 }
 
 function toDeviceForm(device: Device): DeviceFormState {
@@ -533,8 +571,11 @@ export default function UserManagementModal({
   }
 
   const handleCancelMessage = (message: AdminMessage) => {
+    const status = message.status?.toLowerCase()
     const warning =
-      message.status?.toLowerCase() === 'dispatched'
+      status === 'received_by_device'
+        ? 'This message is already on the phone queue. The Android app will check cancellation before sending, but it may already be in progress. Continue?'
+        : status === 'dispatched'
         ? 'This message was already dispatched to the device. Cancellation will be recorded, but device-side delivery may already be in progress. Continue?'
         : 'Cancel this pending message?'
 
@@ -977,9 +1018,12 @@ export default function UserManagementModal({
                   <option value='all'>All statuses</option>
                   <option value='pending'>Pending</option>
                   <option value='dispatched'>Dispatched</option>
+                  <option value='received_by_device'>On device</option>
+                  <option value='sending'>Sending</option>
                   <option value='sent'>Sent</option>
                   <option value='delivered'>Delivered</option>
                   <option value='failed'>Failed</option>
+                  <option value='delivery_failed'>Delivery failed</option>
                   <option value='received'>Received</option>
                   <option value='unknown'>Unknown</option>
                   <option value='cancelled'>Cancelled</option>
@@ -1047,9 +1091,16 @@ export default function UserManagementModal({
                             )}
                           </td>
                           <td className='px-3 py-3'>
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${getMessageStatusTone(message.status)}`}>
-                              {message.status || 'pending'}
-                            </span>
+                            <div className='space-y-1'>
+                              <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getMessageStatusTone(message.status)}`}>
+                                {getMessageStatusLabel(message.status)}
+                              </span>
+                              {!isReceived && (
+                                <p className='max-w-[220px] text-xs leading-4 text-gray-500 dark:text-gray-400'>
+                                  {getMessageStageText(message)}
+                                </p>
+                              )}
+                            </div>
                           </td>
                           <td className='px-3 py-3'>
                             <div className='flex flex-wrap gap-2'>

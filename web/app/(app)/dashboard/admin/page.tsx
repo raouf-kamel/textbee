@@ -68,6 +68,7 @@ type DeviceMonitoringDevice = {
   heartbeatAgeMinutes?: number | null
   sentSMSCount: number
   receivedSMSCount: number
+  smsSendDelaySeconds?: number
   pendingSMSCount: number
   isOnline: boolean
   isStale: boolean
@@ -515,13 +516,18 @@ function DeviceMonitoringSection() {
                           <p className='text-gray-400'>{formatNetwork(device)}</p>
                         </td>
                         <td className='px-3 py-3'>
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            device.hasHighPendingSMS
-                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                          }`}>
-                            {device.pendingSMSCount}
-                          </span>
+                          <div className='space-y-1'>
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              device.hasHighPendingSMS
+                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                            }`}>
+                              {device.pendingSMSCount}
+                            </span>
+                            <p className='text-xs text-gray-400'>
+                              Delay {device.smsSendDelaySeconds ?? 5}s
+                            </p>
+                          </div>
                         </td>
                         <td className='px-3 py-3'>
                           <p className='max-w-[180px] truncate text-xs font-medium text-gray-700 dark:text-gray-200'>

@@ -49,6 +49,12 @@ export class SMS {
   dispatchedAt: Date
 
   @Prop({ type: Date })
+  receivedByDeviceAt: Date
+
+  @Prop({ type: Date })
+  sendingAt: Date
+
+  @Prop({ type: Date })
   sentAt: Date
 
   @Prop({ type: Date })
@@ -70,9 +76,12 @@ export class SMS {
   status:
     | 'pending'
     | 'dispatched'
+    | 'received_by_device'
+    | 'sending'
     | 'sent'
     | 'delivered'
     | 'failed'
+    | 'delivery_failed'
     | 'unknown'
     | 'received'
     | 'cancelled'
