@@ -13,6 +13,7 @@ import { ApiEndpoints } from '@/config/api'
 import { useMutation } from '@tanstack/react-query'
 import Link from 'next/link'
 import { Routes } from '@/config/routes'
+import { useI18n } from '@/lib/i18n'
 
 const changePasswordSchema = z
   .object({
@@ -38,6 +39,7 @@ type ChangePasswordFormData = z.infer<typeof changePasswordSchema>
 
 export default function ChangePasswordForm() {
   const { toast } = useToast()
+  const { t } = useI18n()
 
   const changePasswordForm = useForm<ChangePasswordFormData>({
     resolver: zodResolver(changePasswordSchema),
@@ -53,17 +55,17 @@ export default function ChangePasswordForm() {
       httpBrowserClient.post(ApiEndpoints.auth.changePassword(), data),
     onSuccess: () => {
       toast({
-        title: 'Password changed successfully!',
+        title: t('account.passwordChanged'),
       })
       changePasswordForm.reset()
     },
     onError: (error) => {
       const errorMessage = (error as any).response?.data?.error
       changePasswordForm.setError('root.serverError', {
-        message: errorMessage || 'Failed to change password',
+        message: errorMessage || t('account.failedChangePassword'),
       })
       toast({
-        title: 'Failed to change password',
+        title: t('account.failedChangePassword'),
       })
     },
   })
@@ -71,9 +73,9 @@ export default function ChangePasswordForm() {
   return (
     <>
       <p className='text-sm text-muted-foreground mb-4'>
-        If you signed in with Google, you can reset your password{' '}
+        {t('account.googlePasswordResetPrefix')}
         <Link href={Routes.resetPassword} className='underline'>
-          here
+          {t('account.here')}
         </Link>
         .
       </p>
@@ -83,12 +85,12 @@ export default function ChangePasswordForm() {
         className='space-y-4'
       >
         <div className='space-y-2'>
-          <Label htmlFor='oldPassword'>Old Password</Label>
+          <Label htmlFor='oldPassword'>{t('account.oldPassword')}</Label>
           <Input
             id='oldPassword'
             type='password'
             {...changePasswordForm.register('oldPassword')}
-            placeholder='Enter your old password'
+            placeholder={t('account.oldPasswordPlaceholder')}
           />
           {changePasswordForm.formState.errors.oldPassword && (
             <p className='text-sm text-destructive'>
@@ -98,12 +100,12 @@ export default function ChangePasswordForm() {
         </div>
 
         <div className='space-y-2'>
-          <Label htmlFor='newPassword'>New Password</Label>
+          <Label htmlFor='newPassword'>{t('auth.newPassword')}</Label>
           <Input
             id='newPassword'
             type='password'
             {...changePasswordForm.register('newPassword')}
-            placeholder='Enter your new password'
+            placeholder={t('account.newPasswordPlaceholder')}
           />
           {changePasswordForm.formState.errors.newPassword && (
             <p className='text-sm text-destructive'>
@@ -113,12 +115,12 @@ export default function ChangePasswordForm() {
         </div>
 
         <div className='space-y-2'>
-          <Label htmlFor='confirmPassword'>Confirm Password</Label>
+          <Label htmlFor='confirmPassword'>{t('auth.confirmPassword')}</Label>
           <Input
             id='confirmPassword'
             type='password'
             {...changePasswordForm.register('confirmPassword')}
-            placeholder='Enter your confirm password'
+            placeholder={t('account.confirmPasswordPlaceholder')}
           />
           {changePasswordForm.formState.errors.confirmPassword && (
             <p className='text-sm text-destructive'>
@@ -135,7 +137,7 @@ export default function ChangePasswordForm() {
 
         {isChangePasswordSuccess && (
           <p className='text-sm text-green-500'>
-            Password changed successfully!
+            {t('account.passwordChanged')}
           </p>
         )}
 
@@ -147,7 +149,7 @@ export default function ChangePasswordForm() {
           {isChangingPassword ? (
             <Loader2 className='h-4 w-4 animate-spin mr-2' />
           ) : null}
-          Change Password
+          {t('account.changePassword')}
         </Button>
       </form>
     </>

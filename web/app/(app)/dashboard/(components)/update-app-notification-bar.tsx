@@ -16,8 +16,10 @@ import {
   latestAppVersionCode,
   summarizeOutdatedDeviceNames,
 } from './update-app-helpers'
+import { useI18n } from '@/lib/i18n'
 
 export default function UpdateAppNotificationBar() {
+  const { t } = useI18n()
   const { data: devicesResponse, isLoading, error } = useQuery({
     queryKey: ['devices'],
     queryFn: () =>
@@ -41,20 +43,22 @@ export default function UpdateAppNotificationBar() {
   }
 
   const summary = summarizeOutdatedDeviceNames(outdatedDevices, formatDeviceName)
-  const verb = outdatedDevices.length > 1 ? 'are' : 'is'
+  const verb = outdatedDevices.length > 1 ? t('alerts.are') : t('alerts.is')
 
   return (
     <Alert className='sticky top-4 z-20 border-brand-200 bg-brand-50/95 text-brand-950 shadow-sm backdrop-blur dark:border-brand-800 dark:bg-brand-950/90 dark:text-brand-50'>
       <BellRing className='h-4 w-4 text-brand-600 dark:text-brand-300' />
       <AlertDescription className='flex flex-col gap-3 md:flex-row md:items-center md:justify-between'>
         <div className='pr-2 text-sm'>
-          <span className='font-medium'>{summary}</span> {verb} running an older app
-          version. Update to version {latestAppVersionCode} for improved
-          reliability, bug fixes, and more.
+          {t('alerts.updateAppMessage', {
+            summary,
+            verb,
+            version: latestAppVersionCode,
+          })}
         </div>
         <Button asChild size='sm' className='w-full md:w-auto shrink-0'>
           <Link href={Routes.downloadAndroidApp}>
-            Update app
+            {t('devices.updateApp')}
             <ArrowUpRight className='ml-1 h-4 w-4' />
           </Link>
         </Button>

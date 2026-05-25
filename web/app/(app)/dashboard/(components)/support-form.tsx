@@ -29,6 +29,7 @@ import { ApiEndpoints } from '@/config/api'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useTurnstile } from '@/lib/turnstile'
+import { useI18n } from '@/lib/i18n'
 
 const SupportFormSchema = z.object({
   name: z.string().min(1, { message: 'Name is required' }),
@@ -44,6 +45,7 @@ const SupportFormSchema = z.object({
 })
 
 export default function SupportForm() {
+  const { t } = useI18n()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitSuccessful, setIsSubmitSuccessful] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -96,7 +98,7 @@ export default function SupportForm() {
     if (!data.turnstileToken) {
       form.setError('turnstileToken', {
         type: 'manual',
-        message: 'Please complete the bot verification',
+        message: t('auth.botVerificationRequired'),
       })
       setIsSubmitting(false)
       return
@@ -112,19 +114,19 @@ export default function SupportForm() {
       setIsSubmitSuccessful(true)
 
       toast({
-        title: 'Support request submitted',
-        description: response.data.message || 'We will get back to you soon.',
+        title: t('account.supportSubmitted'),
+        description: response.data.message || t('account.supportSubmittedDescription'),
       })
     } catch (error) {
       console.error('Error submitting support request:', error)
 
       setErrorMessage(
-        'Error submitting support request. Please try again later.'
+        t('account.supportErrorInline')
       )
 
       toast({
-        title: 'Error submitting support request',
-        description: 'Please try again later',
+        title: t('account.supportError'),
+        description: t('account.supportErrorDescription'),
         variant: 'destructive',
       })
     } finally {
@@ -141,7 +143,7 @@ export default function SupportForm() {
           disabled={isSubmitting}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Support Category</FormLabel>
+              <FormLabel>{t('account.supportCategory')}</FormLabel>
               <Select
                 onValueChange={field.onChange}
                 disabled={isSubmitting}
@@ -149,16 +151,16 @@ export default function SupportForm() {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder='Select support category' />
+                    <SelectValue placeholder={t('account.selectSupportCategory')} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value='general'>General Inquiry</SelectItem>
-                  <SelectItem value='technical'>Technical Support</SelectItem>
+                  <SelectItem value='general'>{t('account.generalInquiry')}</SelectItem>
+                  <SelectItem value='technical'>{t('account.technicalSupport')}</SelectItem>
                   <SelectItem value='billing-and-payments'>
-                    Billing and Payments
+                    {t('account.billingPayments')}
                   </SelectItem>
-                  <SelectItem value='other'>Other</SelectItem>
+                  <SelectItem value='other'>{t('account.other')}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -171,9 +173,9 @@ export default function SupportForm() {
           disabled={isSubmitting}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>{t('common.fullName')}</FormLabel>
               <FormControl>
-                <Input placeholder='Your name' {...field} />
+                <Input placeholder={t('account.yourName')} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -185,7 +187,7 @@ export default function SupportForm() {
           disabled={isSubmitting}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('common.email')}</FormLabel>
               <FormControl>
                 <Input placeholder='your@email.com' type='email' {...field} />
               </FormControl>
@@ -199,7 +201,7 @@ export default function SupportForm() {
           disabled={isSubmitting}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone (Optional)</FormLabel>
+              <FormLabel>{t('common.phoneOptional')}</FormLabel>
               <FormControl>
                 <Input placeholder='+1234567890' type='tel' {...field} />
               </FormControl>
@@ -213,10 +215,10 @@ export default function SupportForm() {
           disabled={isSubmitting}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Message</FormLabel>
+              <FormLabel>{t('sms.message')}</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder='How can we help you?'
+                  placeholder={t('account.supportMessagePlaceholder')}
                   className='min-h-[100px]'
                   {...field}
                 />
@@ -243,8 +245,7 @@ export default function SupportForm() {
         />
         {isSubmitSuccessful && (
           <div className='flex items-center gap-2 text-green-500'>
-            <Check className='h-4 w-4' /> We have received your message, we will
-            get back to you soon.
+            <Check className='h-4 w-4' /> {t('account.supportSuccessInline')}
           </div>
         )}
 
@@ -256,10 +257,11 @@ export default function SupportForm() {
         <Button type='submit' disabled={isSubmitting} className='w-full'>
           {isSubmitting ? (
             <>
-              <Loader2 className='h-4 w-4 animate-spin mr-2' /> Submitting...
+              <Loader2 className='h-4 w-4 animate-spin mr-2' />{' '}
+              {t('account.submitting')}
             </>
           ) : (
-            'Submit'
+            t('account.submit')
           )}
         </Button>
       </form>

@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useTurnstile } from '@/lib/turnstile'
+import { useI18n } from '@/lib/i18n'
 
 export default function DeleteAccountForm() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -26,6 +27,7 @@ export default function DeleteAccountForm() {
   const [deleteReason, setDeleteReason] = useState('')
   const [turnstileError, setTurnstileError] = useState<string | null>(null)
   const { toast } = useToast()
+  const { t } = useI18n()
 
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
@@ -58,16 +60,16 @@ export default function DeleteAccountForm() {
   const handleDeleteAccount = () => {
     if (deleteConfirmEmail !== currentUser?.email) {
       toast({
-        title: 'Please enter your correct email address',
+        title: t('account.correctEmailRequired'),
       })
       return
     } else if (deleteReason.length < 4) {
       toast({
-        title: 'Please enter a reason for deletion',
+        title: t('account.deletionReasonRequired'),
       })
       return
     } else if (!turnstileToken) {
-      setTurnstileError('Please complete the bot verification')
+      setTurnstileError(t('auth.botVerificationRequired'))
       return
     }
     requestAccountDeletion()
@@ -86,13 +88,13 @@ export default function DeleteAccountForm() {
       }),
     onSuccess: () => {
       toast({
-        title: 'Account deletion request submitted',
+        title: t('account.deletionSubmitted'),
       })
       setIsDeleteDialogOpen(false)
     },
     onError: () => {
       toast({
-        title: 'Failed to submit account deletion request',
+        title: t('account.failedDeletionRequest'),
       })
     },
   })
@@ -100,9 +102,7 @@ export default function DeleteAccountForm() {
   return (
     <>
       <p className='text-sm text-muted-foreground mb-6'>
-        Once you delete your account, there is no going back. This action
-        permanently removes all your data, cancels subscriptions, and revokes
-        access to all services.
+        {t('account.deleteIntro')}
       </p>
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -112,38 +112,38 @@ export default function DeleteAccountForm() {
           onClick={() => setIsDeleteDialogOpen(true)}
         >
           <AlertTriangle className='mr-2 h-4 w-4' />
-          Delete Account
+          {t('account.deleteAccount')}
         </Button>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className='flex items-center gap-2'>
               <AlertTriangle className='h-5 w-5 text-destructive' />
-              Delete Account
+              {t('account.deleteAccount')}
             </DialogTitle>
             <DialogDescription className='pt-4'>
               <p className='mb-4'>
-                Are you sure you want to delete your account? This action:
+                {t('account.deleteConfirmQuestion')}
               </p>
               <ul className='list-disc list-inside space-y-2 mb-4'>
-                <li>Cannot be undone</li>
-                <li>Will permanently delete all your data</li>
-                <li>Will cancel all active subscriptions</li>
-                <li>Will remove access to all services</li>
+                <li>{t('account.deleteCannotUndo')}</li>
+                <li>{t('account.deleteAllData')}</li>
+                <li>{t('account.deleteSubscriptions')}</li>
+                <li>{t('account.deleteServices')}</li>
               </ul>
 
-              <Label htmlFor='deleteReason'>Reason for deletion</Label>
+              <Label htmlFor='deleteReason'>{t('account.deletionReason')}</Label>
               <Textarea
                 className='my-2'
-                placeholder='Enter your reason for deletion'
+                placeholder={t('account.deletionReasonPlaceholder')}
                 value={deleteReason}
                 onChange={(e) => setDeleteReason(e.target.value)}
               />
 
-              <p>Please type your email address to confirm:</p>
+              <p>{t('account.typeEmailToConfirm')}</p>
 
               <Input
                 className='mt-2'
-                placeholder='Enter your email address'
+                placeholder={t('account.emailConfirmPlaceholder')}
                 value={deleteConfirmEmail}
                 onChange={(e) => setDeleteConfirmEmail(e.target.value)}
               />
@@ -163,13 +163,13 @@ export default function DeleteAccountForm() {
                   {(requestAccountDeletionError as any).response?.data
                     ?.message ||
                     requestAccountDeletionError.message ||
-                    'Failed to submit account deletion request'}
+                    t('account.failedDeletionRequest')}
                 </p>
               )}
 
               {isRequestAccountDeletionSuccess && (
                 <p className='text-sm text-green-500'>
-                  Account deletion request submitted
+                  {t('account.deletionSubmitted')}
                 </p>
               )}
             </DialogDescription>
@@ -179,7 +179,7 @@ export default function DeleteAccountForm() {
               variant='outline'
               onClick={() => setIsDeleteDialogOpen(false)}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant='destructive'
@@ -191,7 +191,7 @@ export default function DeleteAccountForm() {
               ) : (
                 <AlertTriangle className='h-4 w-4 mr-2' />
               )}
-              Delete Account
+              {t('account.deleteAccount')}
             </Button>
           </DialogFooter>
         </DialogContent>

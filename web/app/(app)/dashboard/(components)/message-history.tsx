@@ -47,12 +47,17 @@ import { toast } from '@/hooks/use-toast'
 import { formatError } from '@/lib/utils/errorHandler'
 import { formatRateLimitMessageForToast } from '@/components/shared/rate-limit-error'
 import { formatDeviceName } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 
 // Helper function to format timestamps
-const formatTimestamp = (timestamp: string | null | undefined) => {
-  if (!timestamp) return 'N/A'
-  return new Date(timestamp).toLocaleString('en-US', {
+const formatTimestamp = (
+  timestamp: string | null | undefined,
+  locale: 'en' | 'ar',
+  fallback: string
+) => {
+  if (!timestamp) return fallback
+  return new Date(timestamp).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',
     day: 'numeric',
@@ -62,56 +67,56 @@ const formatTimestamp = (timestamp: string | null | undefined) => {
 }
 
 // Helper to get status color and icon
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: string, t: ReturnType<typeof useI18n>['t']) => {
   const normalizedStatus = status?.toLowerCase() || 'pending'
   switch (normalizedStatus) {
     case 'pending':
       return {
         color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
         icon: <Timer className='h-3 w-3' />,
-        label: 'Pending',
+        label: t('sms.statusPending'),
       }
     case 'sent':
       return {
         color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
         icon: <Check className='h-3 w-3' />,
-        label: 'Sent',
+        label: t('sms.statusSent'),
       }
     case 'dispatched':
       return {
         color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
         icon: <Timer className='h-3 w-3' />,
-        label: 'FCM dispatched',
+        label: t('sms.statusDispatched'),
       }
     case 'received_by_device':
       return {
         color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
         icon: <Timer className='h-3 w-3' />,
-        label: 'On device',
+        label: t('sms.statusOnDevice'),
       }
     case 'sending':
       return {
         color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
         icon: <Timer className='h-3 w-3' />,
-        label: 'Sending',
+        label: t('sms.statusSending'),
       }
     case 'delivered':
       return {
         color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
         icon: <Check className='h-3 w-3' />,
-        label: 'Delivered',
+        label: t('sms.statusDelivered'),
       }
     case 'failed':
       return {
         color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
         icon: <X className='h-3 w-3' />,
-        label: 'Failed',
+        label: t('sms.statusFailed'),
       }
     case 'delivery_failed':
       return {
         color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
         icon: <X className='h-3 w-3' />,
-        label: 'Delivery failed',
+        label: t('sms.statusDeliveryFailed'),
       }
     default:
       return {
@@ -123,6 +128,7 @@ const getStatusBadge = (status: string) => {
 }
 
 function ReplyDialog({ sms, onClose, open, onOpenChange }: { sms: any; onClose?: () => void; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { t } = useI18n()
 
   const {
     mutate: sendSms,
@@ -134,7 +140,7 @@ function ReplyDialog({ sms, onClose, open, onOpenChange }: { sms: any; onClose?:
       httpBrowserClient.post(ApiEndpoints.gateway.sendSMS(data.deviceId), data),
     onSuccess: () => {
       toast({
-        title: 'SMS sent successfully!',
+        title: t('sms.sentSuccess'),
       })
       setTimeout(() => {
         onOpenChange(false)
@@ -145,9 +151,9 @@ function ReplyDialog({ sms, onClose, open, onOpenChange }: { sms: any; onClose?:
       const formattedError = formatError(error)
       const description = formattedError.isRateLimit
         ? formatRateLimitMessageForToast(formattedError.rateLimitData)
-        : formattedError.message || 'Please try again.'
+        : formattedError.message || t('sms.tryAgain')
       toast({
-        title: 'Failed to send SMS.',
+        title: t('sms.failedSend'),
         description,
         variant: 'destructive',
       })
@@ -190,10 +196,10 @@ function ReplyDialog({ sms, onClose, open, onOpenChange }: { sms: any; onClose?:
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <Reply className='h-5 w-5' />
-            Reply to {sms.sender}
+            {t('sms.replyTo', { number: sms.sender })}
           </DialogTitle>
           <DialogDescription>
-            Send a reply message to this sender.
+            {t('sms.replyDescription')}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -212,13 +218,13 @@ function ReplyDialog({ sms, onClose, open, onOpenChange }: { sms: any; onClose?:
                     defaultValue={sms?.device?._id}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder='Select a device' />
+                      <SelectValue placeholder={t('sms.selectDevice')} />
                     </SelectTrigger>
                     <SelectContent>
                       {devices?.data?.map((device: any) => (
                         <SelectItem key={device._id} value={device._id}>
                           {formatDeviceName(device)}{' '}
-                          {device.enabled ? '' : '(disabled)'}
+                          {device.enabled ? '' : `(${t('devices.disabled')})`}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -234,7 +240,7 @@ function ReplyDialog({ sms, onClose, open, onOpenChange }: { sms: any; onClose?:
             <div>
               <Input
                 type='tel'
-                placeholder='Phone Number'
+                placeholder={t('sms.phoneNumber')}
                 {...register('recipients.0')}
               />
               {errors.recipients?.[0] && (
@@ -245,7 +251,7 @@ function ReplyDialog({ sms, onClose, open, onOpenChange }: { sms: any; onClose?:
             </div>
             <div>
               <Textarea
-                placeholder='Message'
+                placeholder={t('sms.message')}
                 {...register('message')}
                 rows={4}
               />
@@ -262,13 +268,13 @@ function ReplyDialog({ sms, onClose, open, onOpenChange }: { sms: any; onClose?:
               variant='outline'
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type='submit' disabled={isSendingSms}>
               {isSendingSms && (
                 <Spinner size='sm' className='mr-2' color='white' />
               )}
-              {isSendingSms ? 'Sending...' : 'Send Reply'}
+              {isSendingSms ? t('sms.sending') : t('sms.sendReply')}
             </Button>
           </div>
         </form>
@@ -278,6 +284,7 @@ function ReplyDialog({ sms, onClose, open, onOpenChange }: { sms: any; onClose?:
 }
 
 function FollowUpDialog({ message, onClose, open, onOpenChange }: { message: any; onClose?: () => void; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { t } = useI18n()
   const {
     mutate: sendSms,
     isPending: isSendingSms,
@@ -288,7 +295,7 @@ function FollowUpDialog({ message, onClose, open, onOpenChange }: { message: any
       httpBrowserClient.post(ApiEndpoints.gateway.sendSMS(data.deviceId), data),
     onSuccess: () => {
       toast({
-        title: 'Follow-up SMS sent successfully!',
+        title: t('sms.followUpSent'),
       })
       setTimeout(() => {
         onOpenChange(false)
@@ -299,9 +306,9 @@ function FollowUpDialog({ message, onClose, open, onOpenChange }: { message: any
       const formattedError = formatError(error)
       const description = formattedError.isRateLimit
         ? formatRateLimitMessageForToast(formattedError.rateLimitData)
-        : formattedError.message || 'Please try again.'
+        : formattedError.message || t('sms.tryAgain')
       toast({
-        title: 'Failed to send follow-up SMS.',
+        title: t('sms.failedFollowUp'),
         description,
         variant: 'destructive',
       })
@@ -352,13 +359,15 @@ function FollowUpDialog({ message, onClose, open, onOpenChange }: { message: any
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <MessageSquare className='h-5 w-5' />
-            Follow Up with{' '}
-            {message.recipient ||
-              (message.recipients && message.recipients[0]) ||
-              'Recipient'}
+            {t('sms.followUpWith', {
+              number:
+                message.recipient ||
+                (message.recipients && message.recipients[0]) ||
+                t('sms.unknown'),
+            })}
           </DialogTitle>
           <DialogDescription>
-            Send a follow-up message to this recipient.
+            {t('sms.followUpDescription')}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -377,13 +386,13 @@ function FollowUpDialog({ message, onClose, open, onOpenChange }: { message: any
                     defaultValue={message?.device?._id}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder='Select a device' />
+                      <SelectValue placeholder={t('sms.selectDevice')} />
                     </SelectTrigger>
                     <SelectContent>
                       {devices?.data?.map((device: any) => (
                         <SelectItem key={device._id} value={device._id}>
                           {formatDeviceName(device)}{' '}
-                          {device.enabled ? '' : '(disabled)'}
+                          {device.enabled ? '' : `(${t('devices.disabled')})`}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -399,7 +408,7 @@ function FollowUpDialog({ message, onClose, open, onOpenChange }: { message: any
             <div>
               <Input
                 type='tel'
-                placeholder='Phone Number'
+                placeholder={t('sms.phoneNumber')}
                 {...register('recipients.0')}
               />
               {errors.recipients?.[0] && (
@@ -410,7 +419,7 @@ function FollowUpDialog({ message, onClose, open, onOpenChange }: { message: any
             </div>
             <div>
               <Textarea
-                placeholder='Message'
+                placeholder={t('sms.message')}
                 {...register('message')}
                 rows={4}
               />
@@ -427,13 +436,13 @@ function FollowUpDialog({ message, onClose, open, onOpenChange }: { message: any
               variant='outline'
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type='submit' disabled={isSendingSms}>
               {isSendingSms && (
                 <Spinner size='sm' className='mr-2' color='white' />
               )}
-              {isSendingSms ? 'Sending...' : 'Send Follow Up'}
+              {isSendingSms ? t('sms.sending') : t('sms.sendFollowUp')}
             </Button>
           </div>
         </form>
@@ -454,15 +463,16 @@ function SmsDetailsDialog({
 }) {
   const [isReplyOpen, setIsReplyOpen] = useState(false)
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false)
+  const { locale, t } = useI18n()
 
-  const statusBadge = getStatusBadge(message?.status)
+  const statusBadge = getStatusBadge(message?.status, t)
   const isSent = !!message?.recipient || (message?.recipients && message.recipients.length > 0)
 
   const handleCopyMessage = () => {
     if (message?.message) {
       navigator.clipboard.writeText(message.message)
       toast({
-        title: 'Message copied to clipboard!',
+        title: t('sms.copied'),
       })
     }
   }
@@ -487,30 +497,33 @@ function SmsDetailsDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
               <MessageSquare className="h-5 w-5 text-brand-500" />
-              SMS Details
+              {t('sms.details')}
             </DialogTitle>
             <DialogDescription>
-              Detailed information about this SMS message.
+              {t('sms.detailsDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="mt-4 space-y-4 text-sm">
             {/* Info Grid - labels 1/3, values 2/3 */}
             <div className="grid grid-cols-[1fr_2fr] gap-x-6 gap-y-3">
-              <div className="font-medium text-muted-foreground">Direction</div>
+              <div className="font-medium text-muted-foreground">{t('sms.direction')}</div>
               <div className="flex items-center gap-1">
                 {isSent ? <ArrowUpRight className="h-4 w-4 text-brand-500" /> :
                   <ArrowDownLeft className="h-4 w-4 text-green-500" />}
-                <span className="capitalize">{isSent ? 'Sent' : 'Received'}</span>
+                <span className="capitalize">
+                  {isSent ? t('sms.sent') : t('sms.received')}
+                </span>
               </div>
 
-              <div className="font-medium text-muted-foreground">Number</div>
+              <div className="font-medium text-muted-foreground">{t('sms.number')}</div>
               <div>
-                {isSent ? message.recipient || message.recipients?.[0] || 'Unknown'
-                        : message.sender || 'Unknown'}
+                {isSent
+                  ? message.recipient || message.recipients?.[0] || t('sms.unknown')
+                  : message.sender || t('sms.unknown')}
               </div>
 
-              <div className="font-medium text-muted-foreground">Status</div>
+              <div className="font-medium text-muted-foreground">{t('sms.status')}</div>
               <div>
                 <Badge variant="outline" className={`${statusBadge.color} flex items-center text-xs`}>
                   {statusBadge.icon}
@@ -518,18 +531,25 @@ function SmsDetailsDialog({
                 </Badge>
               </div>
 
-              <div className="font-medium text-muted-foreground">Date & Time</div>
-              <div>{formatTimestamp(isSent ? message.requestedAt : message.receivedAt)}</div>
+              <div className="font-medium text-muted-foreground">{t('sms.dateTime')}</div>
+              <div>
+                {formatTimestamp(
+                  isSent ? message.requestedAt : message.receivedAt,
+                  locale,
+                  t('sms.notAvailable')
+                )}
+              </div>
 
-              <div className="font-medium text-muted-foreground">Device</div>
+              <div className="font-medium text-muted-foreground">{t('sms.device')}</div>
               <div className="flex items-center gap-1">
                 <Smartphone className="h-3 w-3" />
-                {message.device?.brand || 'N/A'} {message.device?.model || ''}
+                {message.device?.brand || t('sms.notAvailable')}{' '}
+                {message.device?.model || ''}
               </div>
 
               {message.gatewayMessageId && (
                 <>
-                  <div className="font-medium text-muted-foreground">Gateway ID</div>
+                  <div className="font-medium text-muted-foreground">{t('sms.gatewayId')}</div>
                   <div className="font-mono text-xs break-all min-w-0">{message.gatewayMessageId}</div>
                 </>
               )}
@@ -540,7 +560,7 @@ function SmsDetailsDialog({
               <div className="pt-3 border-t border-border space-y-2 min-w-0">
                 {message.errorCode && (
                   <div className="min-w-0">
-                    <div className="font-medium text-muted-foreground mb-0.5">Error code</div>
+                    <div className="font-medium text-muted-foreground mb-0.5">{t('sms.errorCode')}</div>
                     <div
                       className="w-full min-w-0 max-h-24 overflow-y-auto overflow-x-hidden text-destructive text-sm break-words rounded p-2 bg-destructive/5"
                       title={message.errorCode}
@@ -551,7 +571,7 @@ function SmsDetailsDialog({
                 )}
                 {message.errorMessage && (
                   <div className="min-w-0">
-                    <div className="font-medium text-muted-foreground mb-0.5">Error message</div>
+                    <div className="font-medium text-muted-foreground mb-0.5">{t('sms.errorMessage')}</div>
                     <div
                       className="w-full min-w-0 max-h-32 overflow-y-auto overflow-x-hidden text-destructive text-sm break-words rounded p-2 bg-destructive/5"
                       title={message.errorMessage}
@@ -565,7 +585,7 @@ function SmsDetailsDialog({
 
             {/* Message Body */}
             <div className="pt-4 border-t border-border">
-              <h4 className="font-medium text-sm text-muted-foreground mb-1">Message Body</h4>
+              <h4 className="font-medium text-sm text-muted-foreground mb-1">{t('sms.body')}</h4>
               <div className="max-h-48 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900 rounded-md text-sm break-words">
                 {message.message}
               </div>
@@ -576,18 +596,18 @@ function SmsDetailsDialog({
               {!isSent && (
                 <Button variant="ghost" size="sm" className="gap-1" onClick={handleReplyClick}>
                   <Reply className="h-4 w-4" />
-                  Reply
+                  {t('sms.reply')}
                 </Button>
               )}
               {isSent && (
                 <Button variant="ghost" size="sm" className="gap-1" onClick={handleFollowUpClick}>
                   <MessageSquare className="h-4 w-4" />
-                  Follow Up
+                  {t('sms.followUp')}
                 </Button>
               )}
               <Button variant="ghost" size="sm" className="gap-1" onClick={handleCopyMessage}>
                 <Copy className="h-4 w-4" />
-                Copy
+                {t('sms.copy')}
               </Button>
               {/* Optional Delete */}
               {/* <Button variant="ghost" size="sm" className="gap-1 text-destructive hover:bg-destructive/10">
@@ -610,12 +630,15 @@ function SmsDetailsDialog({
 }
 
 function MessageCard({ message, type, device, onSelectMessage }) {
+  const { locale, t } = useI18n()
   const isSent = type === 'sent'
 
   const formattedDate = formatTimestamp(
-    (isSent ? message.requestedAt : message.receivedAt) || message.createdAt
+    (isSent ? message.requestedAt : message.receivedAt) || message.createdAt,
+    locale,
+    t('sms.notAvailable')
   )
-  const statusBadge = getStatusBadge(message.status)
+  const statusBadge = getStatusBadge(message.status, t)
 
   // Condition to show status badge based on device app version and message date
   const shouldShowStatus = device?.appVersionCode >= 14 && new Date(message?.createdAt) > new Date('2025-06-05')
@@ -635,16 +658,22 @@ function MessageCard({ message, type, device, onSelectMessage }) {
                 <div className='flex items-center text-brand-600 dark:text-brand-400 font-medium'>
                   <ArrowUpRight className='h-4 w-4 mr-1' />
                   <span>
-                    To:{' '}
-                    {message.recipient ||
-                      (message.recipients && message.recipients[0]) ||
-                      'Unknown'}
+                    {t('sms.to', {
+                      number:
+                        message.recipient ||
+                        (message.recipients && message.recipients[0]) ||
+                        t('sms.unknown'),
+                    })}
                   </span>
                 </div>
               ) : (
                 <div className='flex items-center text-green-600 dark:text-green-400 font-medium'>
                   <ArrowDownLeft className='h-4 w-4 mr-1' />
-                  <span>From: {message.sender || 'Unknown'}</span>
+                  <span>
+                    {t('sms.from', {
+                      number: message.sender || t('sms.unknown'),
+                    })}
+                  </span>
                 </div>
               )}
             </div>
@@ -689,6 +718,7 @@ function MessageCardSkeleton() {
 }
 
 export default function MessageHistory() {
+  const { t } = useI18n()
   const [selectedMessage, setSelectedMessage] = useState(null)
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
 
@@ -804,14 +834,14 @@ export default function MessageHistory() {
   if (devicesError)
     return (
       <div className='flex justify-center items-center h-full'>
-        Error: {devicesError.message}
+        {t('common.error')}: {devicesError.message}
       </div>
     )
 
   if (!devices?.data?.length)
     return (
       <div className='flex justify-center items-center h-full'>
-        No devices found
+        {t('devices.noDevices')}
       </div>
     )
 
@@ -823,11 +853,13 @@ export default function MessageHistory() {
             <div className='flex-1'>
               <div className='flex items-center gap-2 mb-1.5'>
                 <Smartphone className='h-3.5 w-3.5 text-brand-500' />
-                <h3 className='text-sm font-medium text-foreground'>Device</h3>
+                <h3 className='text-sm font-medium text-foreground'>
+                  {t('sms.device')}
+                </h3>
               </div>
               <Select value={currentDevice} onValueChange={handleDeviceChange}>
                 <SelectTrigger className='w-full bg-white/80 dark:bg-black/20 h-9 text-sm border-brand-200 dark:border-brand-800/70'>
-                  <SelectValue placeholder='Select a device' />
+                  <SelectValue placeholder={t('sms.selectDevice')} />
                 </SelectTrigger>
                 <SelectContent>
                   {devices?.data?.map((device: any) => (
@@ -841,7 +873,7 @@ export default function MessageHistory() {
                             variant='outline'
                             className='ml-1 text-xs py-0 h-5'
                           >
-                            Disabled
+                            {t('devices.disabled')}
                           </Badge>
                         )}
                       </div>
@@ -855,7 +887,7 @@ export default function MessageHistory() {
               <div className='flex items-center gap-2 mb-1.5'>
                 <MessageSquare className='h-3.5 w-3.5 text-brand-500' />
                 <h3 className='text-sm font-medium text-foreground'>
-                  Message Type
+                  {t('sms.messageType')}
                 </h3>
               </div>
               <Select
@@ -863,25 +895,25 @@ export default function MessageHistory() {
                 onValueChange={handleMessageTypeChange}
               >
                 <SelectTrigger className='w-full bg-white/80 dark:bg-black/20 h-9 text-sm border-brand-200 dark:border-brand-800/70'>
-                  <SelectValue placeholder='Message type' />
+                  <SelectValue placeholder={t('sms.messageType')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value='all'>
                     <div className='flex items-center gap-1.5'>
                       <div className='h-1.5 w-1.5 rounded-full bg-gray-500'></div>
-                      All Messages
+                      {t('sms.allMessages')}
                     </div>
                   </SelectItem>
                   <SelectItem value='received'>
                     <div className='flex items-center gap-1.5'>
                       <div className='h-1.5 w-1.5 rounded-full bg-green-500'></div>
-                      Received
+                      {t('sms.received')}
                     </div>
                   </SelectItem>
                   <SelectItem value='sent'>
                     <div className='flex items-center gap-1.5'>
                       <div className='h-1.5 w-1.5 rounded-full bg-brand-500'></div>
-                      Sent
+                      {t('sms.sent')}
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -903,16 +935,18 @@ export default function MessageHistory() {
                     isRefreshing ? 'animate-spin' : ''
                   }`}
                 />
-                Refresh Now
+                {t('sms.refreshNow')}
               </Button>
             </div>
 
             <div className='flex items-center gap-1.5'>
               <Timer className='h-3 w-3 text-brand-500' />
-              <span className='text-xs font-medium mr-1'>Auto Refresh:</span>
+              <span className='text-xs font-medium mr-1'>
+                {t('sms.autoRefresh')}
+              </span>
               <div className='flex'>
                 {[
-                  { value: 0, label: 'Off' },
+                  { value: 0, label: t('sms.off') },
                   { value: 15, label: '15s' },
                   { value: 30, label: '30s' },
                   { value: 60, label: '60s' },
@@ -948,13 +982,13 @@ export default function MessageHistory() {
 
       {messagesError && (
         <div className='flex justify-center items-center h-full'>
-          Error: {messagesError.message}
+          {t('common.error')}: {messagesError.message}
         </div>
       )}
 
       {!isLoadingMessages && messages.length === 0 && (
         <div className='flex justify-center items-center h-full py-10'>
-          No messages found
+          {t('sms.noMessages')}
         </div>
       )}
 
@@ -977,7 +1011,7 @@ export default function MessageHistory() {
             disabled={page === 1}
             variant={page === 1 ? 'ghost' : 'default'}
           >
-            Previous
+            {t('sms.previous')}
           </Button>
 
           <div className='flex flex-wrap items-center gap-2 justify-center sm:justify-start'>
@@ -1059,7 +1093,7 @@ export default function MessageHistory() {
             disabled={page === pagination.totalPages}
             variant={page === pagination.totalPages ? 'ghost' : 'default'}
           >
-            Next
+            {t('sms.next')}
           </Button>
         </div>
       )}

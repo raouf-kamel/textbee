@@ -8,8 +8,10 @@ import { polarCustomerPortalRequestUrl } from '@/config/external-links'
 import { useQuery } from '@tanstack/react-query'
 import { CreditCard, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
+import { useI18n } from '@/lib/i18n'
 
 export default function PastDueBillingAlert() {
+  const { t } = useI18n()
   const { data: currentSubscription, isLoading: subLoading } = useQuery({
     queryKey: ['currentSubscription'],
     queryFn: () =>
@@ -49,8 +51,7 @@ export default function PastDueBillingAlert() {
       <AlertDescription className='flex flex-col sm:flex-row flex-wrap items-center gap-2 md:gap-4'>
         <span className='w-full sm:flex-1 text-center sm:text-left text-sm md:text-base font-medium flex items-center justify-center sm:justify-start gap-2'>
           <AlertTriangle className='h-5 w-5 shrink-0' />
-          Your subscription payment failed and your account is past due. Update
-          your payment method to avoid losing access.
+          {t('alerts.pastDue')}
         </span>
         <div className='w-full sm:w-auto mt-2 sm:mt-0 flex justify-center sm:justify-end'>
           <Button
@@ -61,7 +62,7 @@ export default function PastDueBillingAlert() {
           >
             <Link href={portalUrl} target='_blank' rel='noopener noreferrer'>
               <CreditCard className='mr-2 h-4 w-4' />
-              Update payment
+              {t('alerts.updatePayment')}
             </Link>
           </Button>
         </div>

@@ -21,8 +21,10 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog'
+import { useI18n } from '@/lib/i18n'
 
 export default function CommunityLinks() {
+  const { t } = useI18n()
   const [socialOpen, setSocialOpen] = useState(false)
   const [copiedUrl, setCopiedUrl] = useState('')
   const socials = [
@@ -69,8 +71,8 @@ export default function CommunityLinks() {
     setCopiedUrl(content)
 
     toast({
-      title: 'Link copied!',
-      description: 'The Link has been copied to your clipboard.',
+      title: t('communityLinks.copiedToast'),
+      description: t('communityLinks.copiedDescription'),
     })
     setTimeout(() => setCopiedUrl(''), 3000)
   }
@@ -118,12 +120,12 @@ export default function CommunityLinks() {
           </CardHeader>
           <CardContent>
             <p className='text-sm text-muted-foreground mb-4'>
-              Check out our source code and contribute to the project.
+              {t('communityLinks.githubDescription')}
             </p>
             <Link href={ExternalLinks.github} prefetch={false} target='_blank'>
               <Button className='w-full'>
                 <Github className='mr-2 h-4 w-4' />
-                View Source
+                {t('communityLinks.viewSource')}
               </Button>
             </Link>
           </CardContent>
@@ -135,12 +137,12 @@ export default function CommunityLinks() {
           </CardHeader>
           <CardContent>
             <p className='text-sm text-muted-foreground mb-4'>
-              Join our community for support and updates.
+              {t('communityLinks.discordDescription')}
             </p>
             <Link href={ExternalLinks.discord} prefetch={false} target='_blank'>
               <Button className='w-full' variant='outline'>
                 <MessageSquare className='mr-2 h-4 w-4' />
-                Join Discord
+                {t('contribute.joinDiscord')}
               </Button>
             </Link>
           </CardContent>
@@ -152,12 +154,12 @@ export default function CommunityLinks() {
           </CardHeader>
           <CardContent>
             <p className='text-sm text-muted-foreground mb-4'>
-              Follow us on X for the latest updates and announcements.
+              {t('communityLinks.xDescription')}
             </p>
             <Link href={ExternalLinks.twitter} prefetch={false} target='_blank'>
               <Button className='w-full' variant='outline'>
                 <Twitter className='mr-2 h-4 w-4' />
-                Follow on X
+                {t('communityLinks.followOnX')}
               </Button>
             </Link>
           </CardContent>
@@ -169,7 +171,7 @@ export default function CommunityLinks() {
           </CardHeader>
           <CardContent>
             <p className='text-sm text-muted-foreground mb-4'>
-              Connect with us on LinkedIn for updates and news.
+              {t('communityLinks.linkedinDescription')}
             </p>
             <Link
               href={ExternalLinks.linkedin}
@@ -178,18 +180,18 @@ export default function CommunityLinks() {
             >
               <Button className='w-full' variant='outline'>
                 <Linkedin className='mr-2 h-4 w-4' />
-                Connect on LinkedIn
+                {t('contribute.connectLinkedin')}
               </Button>
             </Link>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Spread the Word</CardTitle>
+            <CardTitle>{t('communityLinks.spread')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className='text-sm text-muted-foreground mb-4'>
-              Help others discover textbee.dev by sharing it with your network.
+              {t('communityLinks.spreadDescription')}
             </p>
 
             <Button
@@ -197,7 +199,8 @@ export default function CommunityLinks() {
               className='w-full'
               onClick={() => setSocialOpen(true)}
             >
-              <Share2 className='mr-2 h-4 w-4' /> Share textbee.dev
+              <Share2 className='mr-2 h-4 w-4' />{' '}
+              {t('communityLinks.shareTextbee')}
             </Button>
           </CardContent>
         </Card>
@@ -206,17 +209,18 @@ export default function CommunityLinks() {
         <DialogContent className='sm:max-w-[600px] min-w-[500px] text-base'>
           <DialogHeader>
             <DialogTitle className='text-primary mb-2 text-2xl font-bold'>
-              Share textbee.dev with Others
+              {t('communityLinks.shareTitle')}
             </DialogTitle>
             <p className='text-muted-foreground'>
-              Help us grow by sharing textbee.dev with your friends and
-              colleagues!
+              {t('communityLinks.shareDescription')}
             </p>
           </DialogHeader>
 
           <div className='flex flex-col gap-6 mt-4'>
             <div className='space-y-3'>
-              <h3 className='text-lg font-semibold'>Choose your platform</h3>
+              <h3 className='text-lg font-semibold'>
+                {t('communityLinks.choosePlatform')}
+              </h3>
                <div className='grid grid-cols-4 gap-3 p-4 bg-muted/30 rounded-lg'>
                  {socials.map(({ icon, name, url }) => (
                    <button
@@ -239,7 +243,9 @@ export default function CommunityLinks() {
             </div>
 
             <div className='space-y-3'>
-              <h3 className='text-lg font-semibold'>Share link</h3>
+              <h3 className='text-lg font-semibold'>
+                {t('communityLinks.shareLink')}
+              </h3>
               <div className='flex items-center gap-3 p-3 bg-muted/50 rounded-lg border'>
                 <LinkIcon className='w-5 h-5 flex-shrink-0 text-primary' />
                 <Link
@@ -256,14 +262,16 @@ export default function CommunityLinks() {
                   className='flex-1'
                   variant={copiedUrl === currentUrl ? 'secondary' : 'default'}
                 >
-                  {copiedUrl === currentUrl ? 'Copied!' : 'Copy Link'}
+                  {copiedUrl === currentUrl
+                    ? t('communityLinks.copied')
+                    : t('communityLinks.copyLink')}
                 </Button>
                 <Button
                   onClick={() => window.open(currentUrl, '_blank')}
                   variant='outline'
                   className='flex-1'
                 >
-                  Open & Share
+                  {t('communityLinks.openShare')}
                 </Button>
               </div>
             </div>

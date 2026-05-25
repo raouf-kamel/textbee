@@ -14,8 +14,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useI18n } from '@/lib/i18n'
 
 export default function SubscriptionInfo() {
+  const { locale, t } = useI18n()
   const {
     data: currentSubscription,
     isLoading: isLoadingSubscription,
@@ -41,9 +43,9 @@ export default function SubscriptionInfo() {
     amount: number | null | undefined,
     currency: string | null | undefined
   ) => {
-    if (amount == null || currency == null) return 'Free'
+    if (amount == null || currency == null) return t('account.free')
 
-    const formatter = new Intl.NumberFormat('en-US', {
+    const formatter = new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-US', {
       style: 'currency',
       currency: currency.toUpperCase() || 'USD',
       minimumFractionDigits: 2,
@@ -54,7 +56,9 @@ export default function SubscriptionInfo() {
 
   const getBillingInterval = (interval: string | null | undefined) => {
     if (!interval) return ''
-    return interval.toLowerCase() === 'month' ? 'monthly' : 'yearly'
+    return interval.toLowerCase() === 'month'
+      ? t('account.monthly')
+      : t('account.yearly')
   }
 
   if (isLoadingSubscription)
@@ -67,7 +71,7 @@ export default function SubscriptionInfo() {
   if (subscriptionError)
     return (
       <p className='text-sm text-destructive'>
-        Failed to load subscription information
+        {t('account.failedLoadSubscription')}
       </p>
     )
 
@@ -76,11 +80,11 @@ export default function SubscriptionInfo() {
       <div className='flex items-center justify-between mb-5'>
         <div>
           <h3 className='text-xl font-bold text-gray-900 dark:text-white'>
-            {currentSubscription?.plan?.name || 'Free Plan'}
+            {currentSubscription?.plan?.name || t('account.freePlan')}
           </h3>
           <div className='flex items-center gap-2'>
             <p className='text-sm text-gray-500 dark:text-gray-400'>
-              Current subscription
+              {t('account.currentSubscription')}
             </p>
             {currentSubscription?.amount > 0 && (
               <Badge variant='outline' className='text-xs font-medium'>
@@ -130,7 +134,7 @@ export default function SubscriptionInfo() {
                   .split('_')
                   .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                   .join(' ')
-              : 'Active'}
+              : t('common.active')}
           </span>
         </div>
       </div>
@@ -140,18 +144,18 @@ export default function SubscriptionInfo() {
           <Calendar className='h-4 w-4 text-brand-600 dark:text-brand-400' />
           <div>
             <p className='text-xs text-gray-500 dark:text-gray-400'>
-              Start Date
+              {t('account.startDate')}
             </p>
             <p className='text-sm font-medium text-gray-900 dark:text-white'>
               {currentSubscription?.subscriptionStartDate
                 ? new Date(
                     currentSubscription?.subscriptionStartDate
-                  ).toLocaleDateString('en-US', {
+                  ).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', {
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric',
                   })
-                : 'N/A'}
+                : t('sms.notAvailable')}
             </p>
           </div>
         </div>
@@ -160,18 +164,18 @@ export default function SubscriptionInfo() {
           <Calendar className='h-4 w-4 text-brand-600 dark:text-brand-400' />
           <div>
             <p className='text-xs text-gray-500 dark:text-gray-400'>
-              Next Payment
+              {t('account.nextPayment')}
             </p>
             <p className='text-sm font-medium text-gray-900 dark:text-white'>
               {currentSubscription?.currentPeriodEnd
                 ? new Date(
                     currentSubscription?.currentPeriodEnd
-                  ).toLocaleDateString('en-US', {
+                  ).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', {
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric',
                   })
-                : 'N/A'}
+                : t('sms.notAvailable')}
             </p>
           </div>
         </div>
@@ -179,14 +183,16 @@ export default function SubscriptionInfo() {
 
       <div className='bg-white dark:bg-gray-800 p-4 rounded-md shadow-sm mb-5'>
         <p className='text-xs text-gray-500 dark:text-gray-400 mb-3 font-medium'>
-          Usage Limits
+          {t('account.usageLimits')}
         </p>
         <div className='grid grid-cols-3 gap-3'>
           <div className='bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md'>
-            <p className='text-xs text-gray-500 dark:text-gray-400'>Daily</p>
+            <p className='text-xs text-gray-500 dark:text-gray-400'>
+              {t('account.daily')}
+            </p>
             <p className='text-sm font-medium text-gray-900 dark:text-white'>
               {currentSubscription?.plan?.dailyLimit === -1
-                ? 'Unlimited'
+                ? t('account.unlimited')
                 : currentSubscription?.plan?.dailyLimit || '0'}
               {currentSubscription?.plan?.dailyLimit === -1 && (
                 <TooltipProvider>
@@ -197,7 +203,7 @@ export default function SubscriptionInfo() {
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Unlimited (within monthly limit)</p>
+                      <p>{t('account.unlimitedMonthly')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -205,10 +211,12 @@ export default function SubscriptionInfo() {
             </p>
           </div>
           <div className='bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md'>
-            <p className='text-xs text-gray-500 dark:text-gray-400'>Monthly</p>
+            <p className='text-xs text-gray-500 dark:text-gray-400'>
+              {t('account.monthlyLimit')}
+            </p>
             <p className='text-sm font-medium text-gray-900 dark:text-white'>
               {currentSubscription?.plan?.monthlyLimit === -1
-                ? 'Unlimited'
+                ? t('account.unlimited')
                 : currentSubscription?.plan?.monthlyLimit?.toLocaleString() ||
                   '0'}
               {currentSubscription?.plan?.monthlyLimit === -1 && (
@@ -220,7 +228,7 @@ export default function SubscriptionInfo() {
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Unlimited (within fair usage)</p>
+                      <p>{t('account.unlimitedFairUsage')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -228,10 +236,12 @@ export default function SubscriptionInfo() {
             </p>
           </div>
           <div className='bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md'>
-            <p className='text-xs text-gray-500 dark:text-gray-400'>Bulk</p>
+            <p className='text-xs text-gray-500 dark:text-gray-400'>
+              {t('account.bulk')}
+            </p>
             <p className='text-sm font-medium text-gray-900 dark:text-white'>
               {currentSubscription?.plan?.bulkSendLimit === -1
-                ? 'Unlimited'
+                ? t('account.unlimited')
                 : currentSubscription?.plan?.bulkSendLimit || '0'}
               {currentSubscription?.plan?.bulkSendLimit === -1 && (
                 <TooltipProvider>
@@ -242,7 +252,7 @@ export default function SubscriptionInfo() {
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Unlimited (within monthly limit)</p>
+                      <p>{t('account.unlimitedMonthly')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -259,14 +269,14 @@ export default function SubscriptionInfo() {
             href='/checkout/pro'
             className='text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 px-4 py-2 rounded-md transition-colors'
           >
-            Upgrade to Pro →
+            {t('account.upgradeToPro')}
           </Link>
         ) : (
           <Link
             href={polarCustomerPortalRequestUrl(currentUser?.email)}
             className='text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 px-4 py-2 rounded-md transition-colors'
           >
-            Manage Subscription →
+            {t('account.manageSubscription')}
           </Link>
         )}
       </div>

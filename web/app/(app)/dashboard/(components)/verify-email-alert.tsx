@@ -6,8 +6,10 @@ import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useMemo } from 'react'
 import { Mail, ShieldAlert } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 export default function VerifyEmailAlert() {
+  const { t } = useI18n()
   const {
     data: userData,
     isLoading: isLoadingUserData,
@@ -22,23 +24,16 @@ export default function VerifyEmailAlert() {
 
   const ctaMessages = useMemo(
     () => [
-      'Hey there! Verify your email to keep your service running smoothly.',
-      'Quick heads up - we need to verify your email to prevent any interruptions.',
-      'Just a friendly reminder to verify your email and avoid service disruptions.',
-      'Your account needs email verification to ensure uninterrupted service.',
-      'One small step to go - verify your email to keep your account active and running.',
+      ...t('alerts.verifyMessages').split('|'),
     ],
-    []
+    [t]
   )
 
   const buttonTexts = useMemo(
     () => [
-      'Verify Email',
-      "Let's Do This",
-      'Verify Now',
-      'Complete Verification',
+      ...t('alerts.verifyButtons').split('|'),
     ],
-    []
+    [t]
   )
 
   const randomCta = useMemo(() => {

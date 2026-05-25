@@ -29,6 +29,7 @@ import GenerateApiKey, {
   type GenerateApiKeyHandle,
 } from './generate-api-key'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useI18n } from '@/lib/i18n'
 
 type ApiKeyRow = {
   _id: string
@@ -43,6 +44,7 @@ type ApiKeyRow = {
 export default function ApiKeys() {
   const addApiKeyRef = useRef<GenerateApiKeyHandle>(null)
   const queryClient = useQueryClient()
+  const { locale, t } = useI18n()
 
   const [selectedKey, setSelectedKey] = useState<ApiKeyRow | null>(null)
   const [isRevokeDialogOpen, setIsRevokeDialogOpen] = useState(false)
@@ -90,14 +92,16 @@ export default function ApiKeys() {
     onSuccess: () => {
       setIsRevokeDialogOpen(false)
       toast({
-        title: `API key "${selectedKey?.apiKey}" has been revoked`,
+        title: t('apiKeys.revokedToast', {
+          key: selectedKey?.apiKey ?? '',
+        }),
       })
       void queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
     },
     onError: () => {
       toast({
         variant: 'destructive',
-        title: 'Error revoking API key',
+        title: t('apiKeys.revokeError'),
         description: revokeApiKeyError?.message,
       })
     },
@@ -114,14 +118,14 @@ export default function ApiKeys() {
       setIsConfirmDeleteRevokedOpen(false)
       setRevokedKeyToDelete(null)
       toast({
-        title: 'API key removed',
+        title: t('apiKeys.removedToast'),
       })
       void queryClient.invalidateQueries({ queryKey: ['apiKeys'] })
     },
     onError: () => {
       toast({
         variant: 'destructive',
-        title: 'Error deleting API key',
+        title: t('apiKeys.deleteError'),
         description: deleteApiKeyError?.message,
       })
     },
@@ -136,14 +140,14 @@ export default function ApiKeys() {
     onSuccess: () => {
       setIsRenameDialogOpen(false)
       toast({
-        title: `API key renamed to "${newKeyName}"`,
+        title: t('apiKeys.renamedToast', { name: newKeyName }),
       })
       void queryClient.invalidateQueries({ queryKey: ['apiKeys', 'active'] })
     },
     onError: () => {
       toast({
         variant: 'destructive',
-        title: 'Error renaming API key',
+        title: t('apiKeys.renameError'),
         description: renameApiKeyError?.message,
       })
     },
@@ -156,7 +160,7 @@ export default function ApiKeys() {
       <GenerateApiKey ref={addApiKeyRef} showTrigger={false} />
       <Card>
         <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-          <CardTitle className='text-lg'>API Keys</CardTitle>
+          <CardTitle className='text-lg'>{t('apiKeys.title')}</CardTitle>
           <div className='flex items-center gap-1'>
             <Button
               variant='ghost'
@@ -164,7 +168,7 @@ export default function ApiKeys() {
               className='h-auto px-2 py-1 text-xs font-normal text-muted-foreground hover:bg-transparent hover:text-foreground'
               onClick={() => setIsRevokedModalOpen(true)}
             >
-              View revoked keys
+              {t('apiKeys.viewRevoked')}
             </Button>
             <Button
               variant='outline'
@@ -172,7 +176,7 @@ export default function ApiKeys() {
               onClick={() => addApiKeyRef.current?.open()}
             >
               <Plus className='mr-1 h-4 w-4' />
-              Add API key
+              {t('apiKeys.add')}
             </Button>
           </div>
         </CardHeader>
@@ -206,13 +210,15 @@ export default function ApiKeys() {
 
             {error && (
               <div className='flex justify-center items-center h-full'>
-                <div>Error: {error.message}</div>
+                <div>
+                  {t('common.error')}: {error.message}
+                </div>
               </div>
             )}
 
             {!isPending && !error && apiKeys?.data?.length === 0 && (
               <div className='flex justify-center items-center h-full'>
-                <div>No API keys found</div>
+                <div>{t('apiKeys.noKeys')}</div>
               </div>
             )}
 
@@ -223,10 +229,10 @@ export default function ApiKeys() {
                   <div className='flex-1'>
                     <div className='flex items-center justify-between'>
                       <h3 className='font-semibold text-sm'>
-                        {apiKey.name || 'API Key'}
+                        {apiKey.name || t('apiKeys.defaultName')}
                       </h3>
                       <Badge variant='default' className='text-xs'>
-                        Active
+                        {t('apiKeys.active')}
                       </Badge>
                     </div>
                     <div className='flex items-center space-x-2 mt-1'>
@@ -236,23 +242,29 @@ export default function ApiKeys() {
                     </div>
                     <div className='flex items-center mt-1 space-x-3 text-xs text-muted-foreground'>
                       <div>
-                        Created at:{' '}
-                        {new Date(apiKey.createdAt).toLocaleString('en-US', {
-                          dateStyle: 'medium',
-                          timeStyle: 'short',
+                        {t('apiKeys.createdAt', {
+                          date: new Date(apiKey.createdAt).toLocaleString(
+                            locale === 'ar' ? 'ar-SA' : 'en-US',
+                            {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            }
+                          ),
                         })}
                       </div>
                       <div>
-                        Last used:{' '}
-                        {apiKey?.lastUsedAt && apiKey.usageCount
-                          ? new Date(apiKey.lastUsedAt).toLocaleString(
-                              'en-US',
-                              {
-                                dateStyle: 'medium',
-                                timeStyle: 'short',
-                              }
-                            )
-                          : 'Never'}
+                        {t('apiKeys.lastUsed', {
+                          date:
+                            apiKey?.lastUsedAt && apiKey.usageCount
+                              ? new Date(apiKey.lastUsedAt).toLocaleString(
+                                  locale === 'ar' ? 'ar-SA' : 'en-US',
+                                  {
+                                    dateStyle: 'medium',
+                                    timeStyle: 'short',
+                                  }
+                                )
+                              : t('apiKeys.never'),
+                        })}
                       </div>
                     </div>
                   </div>
@@ -267,11 +279,11 @@ export default function ApiKeys() {
                         <DropdownMenuItem
                           onClick={() => {
                             setSelectedKey(apiKey)
-                            setNewKeyName(apiKey.name || 'API Key')
+                            setNewKeyName(apiKey.name || t('apiKeys.defaultName'))
                             setIsRenameDialogOpen(true)
                           }}
                         >
-                          Rename
+                          {t('apiKeys.rename')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className='text-destructive'
@@ -280,7 +292,7 @@ export default function ApiKeys() {
                             setIsRevokeDialogOpen(true)
                           }}
                         >
-                          Revoke
+                          {t('apiKeys.revoke')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -294,19 +306,15 @@ export default function ApiKeys() {
         <Dialog open={isRevokeDialogOpen} onOpenChange={setIsRevokeDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Revoke API key?</DialogTitle>
+              <DialogTitle>{t('apiKeys.revokeTitle')}</DialogTitle>
               <DialogDescription className='sr-only'>
-                Revoking stops this key from working everywhere it is used.
+                {t('apiKeys.revokeDescription')}
               </DialogDescription>
             </DialogHeader>
             <Alert variant='destructive'>
               <AlertTriangle className='h-4 w-4' />
               <AlertDescription>
-                Revoking immediately stops this key from working everywhere it is
-                still used—apps, servers, scripts, devices, and other integrations.
-                Create a new API key first if you need one, then update every
-                place the old key is stored and reconnect or reconfigure anything
-                that depends on it.
+                {t('apiKeys.revokeWarning')}
               </AlertDescription>
             </Alert>
             <DialogFooter>
@@ -315,7 +323,7 @@ export default function ApiKeys() {
                 onClick={() => setIsRevokeDialogOpen(false)}
                 disabled={isRevokingApiKey}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 variant='destructive'
@@ -325,7 +333,7 @@ export default function ApiKeys() {
                 {isRevokingApiKey ? (
                   <Loader2 className='h-4 w-4 animate-spin mr-2' />
                 ) : null}
-                Revoke key
+                {t('apiKeys.revokeKey')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -338,10 +346,9 @@ export default function ApiKeys() {
         >
           <DialogContent className='max-h-[85vh] overflow-y-auto sm:max-w-lg'>
             <DialogHeader>
-              <DialogTitle>Revoked API keys</DialogTitle>
+              <DialogTitle>{t('apiKeys.revokedTitle')}</DialogTitle>
               <DialogDescription>
-                These keys no longer work. You can remove them from your account
-                to tidy your list.
+                {t('apiKeys.revokedDescription')}
               </DialogDescription>
             </DialogHeader>
             {isRevokedPending && (
@@ -353,7 +360,7 @@ export default function ApiKeys() {
             {!isRevokedPending &&
               (!revokedList || revokedList.length === 0) && (
                 <p className='text-sm text-muted-foreground py-4'>
-                  No revoked keys.
+                  {t('apiKeys.noRevoked')}
                 </p>
               )}
             {!isRevokedPending &&
@@ -364,19 +371,23 @@ export default function ApiKeys() {
                 >
                   <div className='min-w-0 flex-1'>
                     <div className='font-medium text-sm truncate'>
-                      {k.name || 'API Key'}
+                      {k.name || t('apiKeys.defaultName')}
                     </div>
                     <code className='text-xs text-muted-foreground'>
                       {k.apiKey}
                     </code>
                     <div className='text-xs text-muted-foreground mt-1'>
-                      Revoked{' '}
-                      {k.revokedAt
-                        ? new Date(k.revokedAt).toLocaleString('en-US', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })
-                        : ''}
+                      {t('apiKeys.revokedAt', {
+                        date: k.revokedAt
+                          ? new Date(k.revokedAt).toLocaleString(
+                              locale === 'ar' ? 'ar-SA' : 'en-US',
+                              {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              }
+                            )
+                          : '',
+                      })}
                     </div>
                   </div>
                   <Button
@@ -387,7 +398,7 @@ export default function ApiKeys() {
                       setIsConfirmDeleteRevokedOpen(true)
                     }}
                   >
-                    Delete
+                    {t('common.delete')}
                   </Button>
                 </div>
               ))}
@@ -404,10 +415,9 @@ export default function ApiKeys() {
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Remove this key?</DialogTitle>
+              <DialogTitle>{t('apiKeys.removeTitle')}</DialogTitle>
               <DialogDescription>
-                This removes the key from your account permanently. It is already
-                revoked and cannot be used. This cannot be undone.
+                {t('apiKeys.removeDescription')}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -419,7 +429,7 @@ export default function ApiKeys() {
                 }}
                 disabled={isDeletingRevokedApiKey}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 variant='destructive'
@@ -432,7 +442,7 @@ export default function ApiKeys() {
                 {isDeletingRevokedApiKey ? (
                   <Loader2 className='h-4 w-4 animate-spin mr-2' />
                 ) : null}
-                Remove
+                {t('apiKeys.remove')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -442,15 +452,15 @@ export default function ApiKeys() {
         <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Rename API Key</DialogTitle>
+              <DialogTitle>{t('apiKeys.renameTitle')}</DialogTitle>
               <DialogDescription>
-                Enter a new name for your API key.
+                {t('apiKeys.renameDescription')}
               </DialogDescription>
             </DialogHeader>
             <Input
               value={newKeyName}
               onChange={(e) => setNewKeyName(e.target.value)}
-              placeholder='Enter new name'
+              placeholder={t('apiKeys.renamePlaceholder')}
             />
             <DialogFooter>
               <Button
@@ -458,7 +468,7 @@ export default function ApiKeys() {
                 onClick={() => setIsRenameDialogOpen(false)}
                 disabled={isRenamingApiKey}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 onClick={() =>
@@ -472,7 +482,7 @@ export default function ApiKeys() {
                 {isRenamingApiKey ? (
                   <Loader2 className='h-4 w-4 animate-spin mr-2' />
                 ) : null}
-                Save
+                {t('common.save')}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -5,6 +5,7 @@ import httpBrowserClient from '@/lib/httpBrowserClient'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useMemo } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 const DISCOUNT_CODE_FALLBACK = null
 const DISCOUNT_PERCENTAGE_FALLBACK = null
@@ -21,6 +22,7 @@ const discountPercentage = (envDiscountPercentage !== undefined && envDiscountPe
 const isDiscountEnabled = discountCode !== null && discountCode !== '' && discountPercentage !== null && discountPercentage !== ''
 
 export default function UpgradeToProAlert() {
+  const { t } = useI18n()
   const {
     data: currentSubscription,
     isLoading: isLoadingSubscription,
@@ -41,38 +43,31 @@ export default function UpgradeToProAlert() {
     if (monthlyUsagePercentage >= 100 ) {
       return {
         bgColor: 'bg-gradient-to-r from-red-600 to-red-800',
-        message: "⚠️ Monthly limit exceeded! Your requests will be rejected until you upgrade.",
-        subMessage: `You've used ${processedSmsLastMonth} of ${monthlyLimit} SMS this month.`,
-        buttonText: "Upgrade Now!",
+        message: t('alerts.monthlyExceeded'),
+        subMessage: t('alerts.usedOfLimit', {
+          used: processedSmsLastMonth,
+          limit: monthlyLimit,
+        }),
+        buttonText: t('alerts.upgradeNow'),
         buttonColor: 'bg-white text-red-600 hover:bg-red-50 hover:text-red-700 border-red-600',
         urgency: 'critical'
       }
     } else if (monthlyUsagePercentage >= 80) {
       return {
         bgColor: 'bg-gradient-to-r from-orange-500 to-red-500',
-        message: "⚠️ Approaching limit! Upgrade to Pro to avoid service interruption.",
-        subMessage: `You've used ${monthlyUsagePercentage}% of your monthly SMS limit (${processedSmsLastMonth}/${monthlyLimit}).`,
-        buttonText: "Upgrade Before Limit!",
+        message: t('alerts.approachingLimit'),
+        subMessage: t('alerts.usedPercentage', {
+          percentage: monthlyUsagePercentage,
+          used: processedSmsLastMonth,
+          limit: monthlyLimit,
+        }),
+        buttonText: t('alerts.upgradeBeforeLimit'),
         buttonColor: 'bg-white text-orange-600 hover:bg-orange-50 hover:text-orange-700 border-orange-600',
         urgency: 'warning'
       }
     } else {
-      const allCtaMessages = [
-        "Upgrade to Pro for exclusive features and benefits!",
-        "Offer: You are eligible for a 30% discount when upgrading to Pro!",
-        "Unlock premium features with our Pro plan today!",
-        "Take your experience to the next level with Pro!",
-        "Pro users get priority support and advanced features!",
-        "Limited time offer: Upgrade to Pro and save 30%!",
-      ]
-      const allButtonTexts = [
-        "Get Pro Now!",
-        "Upgrade Today!",
-        "Go Pro!",
-        "Unlock Pro!",
-        "Claim Your Discount!",
-        "Upgrade & Save!",
-      ]
+      const allCtaMessages = t('alerts.proMessages').split('|')
+      const allButtonTexts = t('alerts.proButtons').split('|')
       
       // Filter out discount-related messages if discount is not enabled
       const ctaMessages = isDiscountEnabled
@@ -96,8 +91,11 @@ export default function UpgradeToProAlert() {
       const randomIndex = Math.floor(Math.random() * ctaMessages.length)
       
       const subMessage = isDiscountEnabled
-        ? `Use discount code ${discountCode} at checkout for a ${discountPercentage}% discount!`
-        : "Unlock premium features, priority support, and advanced capabilities with Pro!"
+        ? t('alerts.discount', {
+            code: discountCode,
+            percentage: discountPercentage,
+          })
+        : t('alerts.proDefault')
       
       return {
         bgColor: 'bg-gradient-to-r from-purple-500 to-pink-500',
@@ -108,7 +106,7 @@ export default function UpgradeToProAlert() {
         urgency: 'normal'
       }
     }
-  }, [monthlyUsagePercentage, monthlyLimit, processedSmsLastMonth])
+  }, [monthlyUsagePercentage, monthlyLimit, processedSmsLastMonth, t])
 
   if (isLoadingSubscription || !currentSubscription || subscriptionError) {
     return null
@@ -126,7 +124,12 @@ export default function UpgradeToProAlert() {
         </span>
         <span className='w-full sm:flex-1 text-center sm:text-left text-xs md:text-sm'>
           {alertConfig.urgency === 'normal' && isDiscountEnabled ? (
-            <>Use discount code <strong className="text-yellow-200">{discountCode}</strong> at checkout for a {discountPercentage}% discount!</>
+            <>
+              {t('alerts.discount', {
+                code: discountCode,
+                percentage: discountPercentage,
+              })}
+            </>
           ) : (
             alertConfig.subMessage
           )}
@@ -147,7 +150,7 @@ export default function UpgradeToProAlert() {
               asChild
               className='bg-orange-500 text-white hover:bg-orange-600 text-xs md:text-sm'
             >
-              <Link href={'/#pricing'}>Learn More</Link>
+              <Link href={'/#pricing'}>{t('alerts.learnMore')}</Link>
             </Button>
           )}
         </div>

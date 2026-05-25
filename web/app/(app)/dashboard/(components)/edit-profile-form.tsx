@@ -15,6 +15,7 @@ import { ApiEndpoints } from '@/config/api'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Spinner } from '@/components/ui/spinner'
 import { useSession } from 'next-auth/react'
+import { useI18n } from '@/lib/i18n'
 
 const updateProfileSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -30,6 +31,7 @@ type UpdateProfileFormData = z.infer<typeof updateProfileSchema>
 export default function EditProfileForm() {
   const { toast } = useToast()
   const { update: updateSession } = useSession()
+  const { t } = useI18n()
 
   const {
     data: currentUser,
@@ -67,7 +69,7 @@ export default function EditProfileForm() {
     onSuccess: () => {
       refetchCurrentUser()
       toast({
-        title: 'Profile updated successfully!',
+        title: t('account.profileUpdated'),
       })
       updateSession({
         name: updateProfileForm.getValues().name,
@@ -76,7 +78,7 @@ export default function EditProfileForm() {
     },
     onError: () => {
       toast({
-        title: 'Failed to update profile',
+        title: t('account.failedUpdateProfile'),
       })
     },
   })
@@ -94,11 +96,11 @@ export default function EditProfileForm() {
       className='space-y-4'
     >
       <div className='space-y-2'>
-        <Label htmlFor='name'>Full Name</Label>
+        <Label htmlFor='name'>{t('common.fullName')}</Label>
         <Input
           id='name'
           {...updateProfileForm.register('name')}
-          placeholder='Enter your full name'
+          placeholder={t('common.fullName')}
           defaultValue={currentUser?.name}
         />
         {updateProfileForm.formState.errors.name && (
@@ -110,11 +112,11 @@ export default function EditProfileForm() {
 
       <div className='space-y-2'>
         <Label htmlFor='email' className='flex items-center gap-2'>
-          Email Address
+          {t('account.emailAddress')}
           {currentUser?.emailVerifiedAt && (
             <Badge variant='secondary' className='ml-2'>
               <Shield className='h-3 w-3 mr-1' />
-              Verified
+              {t('account.verified')}
             </Badge>
           )}
         </Label>
@@ -123,7 +125,7 @@ export default function EditProfileForm() {
             id='email'
             type='email'
             {...updateProfileForm.register('email')}
-            placeholder='Enter your email'
+            placeholder={t('account.emailPlaceholder')}
             defaultValue={currentUser?.email}
             disabled
           />
@@ -139,12 +141,12 @@ export default function EditProfileForm() {
               ) : (
                 <Mail className='h-4 w-4 mr-2' />
               )}
-              Verify
+              {t('account.verify')}
             </Button>
           ) : (
             <Button variant='outline' disabled>
               <Check className='h-4 w-4 mr-2' />
-              Verified
+              {t('account.verified')}
             </Button>
           )}
         </div>
@@ -156,12 +158,12 @@ export default function EditProfileForm() {
       </div>
 
       <div className='space-y-2'>
-        <Label htmlFor='phone'>Phone Number</Label>
+        <Label htmlFor='phone'>{t('account.phoneNumber')}</Label>
         <Input
           id='phone'
           type='tel'
           {...updateProfileForm.register('phone')}
-          placeholder='Enter your phone number'
+          placeholder={t('account.phonePlaceholder')}
           defaultValue={currentUser?.phone}
         />
         {updateProfileForm.formState.errors.phone && (
@@ -173,7 +175,7 @@ export default function EditProfileForm() {
 
       {isUpdateProfileSuccess && (
         <p className='text-sm text-green-500'>
-          Profile updated successfully!
+          {t('account.profileUpdated')}
         </p>
       )}
 
@@ -185,7 +187,7 @@ export default function EditProfileForm() {
         {isUpdatingProfile ? (
           <Loader2 className='h-4 w-4 animate-spin mr-2' />
         ) : null}
-        Save Changes
+        {t('account.saveChanges')}
       </Button>
     </form>
   )
