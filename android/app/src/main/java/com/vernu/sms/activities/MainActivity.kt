@@ -138,7 +138,9 @@ class MainActivity : AppCompatActivity() {
             setCustomKey("app_version_code", BuildConfig.VERSION_CODE)
         }
 
-        registerDeviceBtn.text = if (deviceId.isNullOrEmpty()) "Register" else "Update"
+        registerDeviceBtn.text = getString(
+            if (deviceId.isNullOrEmpty()) R.string.register else R.string.update
+        )
     }
 
     private fun setupStartupServices() {
@@ -171,12 +173,12 @@ class MainActivity : AppCompatActivity() {
 
         if (missingPermissions.isEmpty()) {
             grantSMSPermissionBtn.isEnabled = false
-            grantSMSPermissionBtn.text = "Permission Granted"
+            grantSMSPermissionBtn.text = getString(R.string.permission_granted)
             renderAvailableSimOptions()
         } else {
             Snackbar.make(
                 grantSMSPermissionBtn,
-                "Please Grant Required Permissions to continue: ${Arrays.toString(missingPermissions)}",
+                getString(R.string.required_permissions_with_list, Arrays.toString(missingPermissions)),
                 Snackbar.LENGTH_SHORT
             ).show()
             grantSMSPermissionBtn.isEnabled = true
@@ -187,9 +189,9 @@ class MainActivity : AppCompatActivity() {
     private fun setupClipboard() {
         copyDeviceIdImgBtn.setOnClickListener { view ->
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("Device ID", deviceId)
+            val clip = ClipData.newPlainText(getString(R.string.device_id_clip_label), deviceId)
             clipboard.setPrimaryClip(clip)
-            Snackbar.make(view, "Copied", Snackbar.LENGTH_LONG).show()
+            Snackbar.make(view, getString(R.string.copied), Snackbar.LENGTH_LONG).show()
         }
     }
 
@@ -256,7 +258,7 @@ class MainActivity : AppCompatActivity() {
 
                         Snackbar.make(
                             view,
-                            "Gateway ${if (isChecked) "enabled" else "disabled"}",
+                            getString(if (isChecked) R.string.gateway_enabled else R.string.gateway_disabled),
                             Snackbar.LENGTH_LONG
                         ).show()
                         SharedPreferenceHelper.setSharedPreferenceBoolean(
@@ -285,7 +287,7 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     override fun onFailure(call: Call<RegisterDeviceResponseDTO>, t: Throwable) {
-                        Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(view, getString(R.string.generic_error), Snackbar.LENGTH_LONG).show()
                         Log.e(TAG, "API_ERROR ${t.message}")
                         Log.e(TAG, "API_ERROR ${t.localizedMessage}")
                         TextBeeUtils.logException(t, "Error updating device")
@@ -306,7 +308,7 @@ class MainActivity : AppCompatActivity() {
             compoundButton.isChecked = isChecked
             Snackbar.make(
                 view,
-                "Receive SMS ${if (isChecked) "enabled" else "disabled"}",
+                getString(if (isChecked) R.string.receive_sms_enabled else R.string.receive_sms_disabled),
                 Snackbar.LENGTH_LONG
             ).show()
         }
@@ -325,14 +327,14 @@ class MainActivity : AppCompatActivity() {
                 TextBeeUtils.startStickyNotificationService(context)
                 Snackbar.make(
                     view,
-                    "Background service enabled - app will be more reliable",
+                    getString(R.string.background_service_enabled),
                     Snackbar.LENGTH_LONG
                 ).show()
             } else {
                 TextBeeUtils.stopStickyNotificationService(context)
                 Snackbar.make(
                     view,
-                    "Background service disabled - app may be killed when in background",
+                    getString(R.string.background_service_disabled),
                     Snackbar.LENGTH_LONG
                 ).show()
             }
@@ -355,7 +357,7 @@ class MainActivity : AppCompatActivity() {
 
         scanQRBtn.setOnClickListener {
             IntentIntegrator(this).apply {
-                setPrompt("Go to textbee.dev/dashboard and click Register Device to generate QR Code")
+                setPrompt(getString(R.string.scan_qr_prompt))
                 setRequestCode(SCAN_QR_REQUEST_CODE)
                 initiateScan()
             }
@@ -410,7 +412,7 @@ class MainActivity : AppCompatActivity() {
             )
             Snackbar.make(
                 smsSendDelayEditText,
-                "SMS send delay saved ($defaultDelay sec)",
+                getString(R.string.sms_send_delay_saved, defaultDelay),
                 Snackbar.LENGTH_SHORT
             ).show()
             return
@@ -421,16 +423,16 @@ class MainActivity : AppCompatActivity() {
             when {
                 value != text.toInt() && value == 0 -> {
                     smsSendDelayEditText.setText("0")
-                    Snackbar.make(smsSendDelayEditText, "Minimum delay is 0 seconds. Saved.", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(smsSendDelayEditText, getString(R.string.minimum_delay_saved), Snackbar.LENGTH_SHORT).show()
                 }
                 value != text.toInt() && value == 3600 -> {
                     smsSendDelayEditText.setText("3600")
-                    Snackbar.make(smsSendDelayEditText, "Maximum delay is 3600 seconds. Saved.", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(smsSendDelayEditText, getString(R.string.maximum_delay_saved), Snackbar.LENGTH_SHORT).show()
                 }
                 else -> {
                     Snackbar.make(
                         smsSendDelayEditText,
-                        "SMS send delay saved ($value sec)",
+                        getString(R.string.sms_send_delay_saved, value),
                         Snackbar.LENGTH_SHORT
                     ).show()
                 }
@@ -450,7 +452,7 @@ class MainActivity : AppCompatActivity() {
             )
             Snackbar.make(
                 smsSendDelayEditText,
-                "Invalid value. Reset to $defaultDelay sec.",
+                getString(R.string.invalid_delay_reset, defaultDelay),
                 Snackbar.LENGTH_SHORT
             ).show()
         }
@@ -464,15 +466,15 @@ class MainActivity : AppCompatActivity() {
             defaultSimSlotRadioGroup.setPadding(16, 8, 16, 8)
 
             val defaultSimSlotRadioBtn = RadioButton(context).apply {
-                text = "Device Default"
+                text = getString(R.string.device_default)
                 id = DEFAULT_SIM_RADIO_ID
                 applyRadioButtonStyle(this)
             }
             defaultSimSlotRadioGroup.addView(defaultSimSlotRadioBtn)
 
             TextBeeUtils.getAvailableSimSlots(context).forEach { subscriptionInfo ->
-                val displayName = subscriptionInfo.displayName?.toString() ?: "Unknown"
-                val simInfo = "$displayName (Subscription ID: ${subscriptionInfo.subscriptionId})"
+                val displayName = subscriptionInfo.displayName?.toString() ?: getString(R.string.unknown)
+                val simInfo = getString(R.string.subscription_id_format, displayName, subscriptionInfo.subscriptionId)
                 val radioButton = RadioButton(context).apply {
                     text = simInfo
                     id = subscriptionInfo.subscriptionId
@@ -495,7 +497,7 @@ class MainActivity : AppCompatActivity() {
             defaultSimSlotRadioGroup.setOnCheckedChangeListener { _, checkedId ->
                 val radioButton = findViewById<RadioButton>(checkedId) ?: return@setOnCheckedChangeListener
                 radioButton.isChecked = true
-                if (radioButton.text.toString() == "Device Default") {
+                if (radioButton.text.toString() == getString(R.string.device_default)) {
                     SharedPreferenceHelper.clearSharedPreference(context, AppConstants.SHARED_PREFS_PREFERRED_SIM_KEY)
                 } else {
                     SharedPreferenceHelper.setSharedPreferenceInt(
@@ -506,7 +508,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         } catch (e: Exception) {
-            Snackbar.make(defaultSimSlotRadioGroup.rootView, "Error: ${e.message}", Snackbar.LENGTH_LONG).show()
+            Snackbar.make(defaultSimSlotRadioGroup.rootView, getString(R.string.error_with_message, e.message), Snackbar.LENGTH_LONG).show()
             Log.e(TAG, "SIM_SLOT_ERROR ${e.message}")
         }
     }
@@ -538,7 +540,7 @@ class MainActivity : AppCompatActivity() {
             return response.message()
         }
 
-        return "An error occurred :( ${response.code()}"
+        return getString(R.string.generic_error_with_code, response.code())
     }
 
     private fun applyRadioButtonStyle(radioButton: RadioButton) {
@@ -587,14 +589,14 @@ class MainActivity : AppCompatActivity() {
             TextBeeUtils.isPermissionGranted(context, permission)
         }
         if (allPermissionsGranted) {
-            Snackbar.make(findViewById(R.id.grantSMSPermissionBtn), "All Permissions Granted", Snackbar.LENGTH_SHORT).show()
+            Snackbar.make(findViewById(R.id.grantSMSPermissionBtn), getString(R.string.all_permissions_granted), Snackbar.LENGTH_SHORT).show()
             grantSMSPermissionBtn.isEnabled = false
-            grantSMSPermissionBtn.text = "Permission Granted"
+            grantSMSPermissionBtn.text = getString(R.string.permission_granted)
             renderAvailableSimOptions()
         } else {
             Snackbar.make(
                 findViewById(R.id.grantSMSPermissionBtn),
-                "Please Grant Required Permissions to continue",
+                getString(R.string.please_grant_required_permissions),
                 Snackbar.LENGTH_SHORT
             ).show()
         }
@@ -606,11 +608,11 @@ class MainActivity : AppCompatActivity() {
         val view = findViewById<View>(R.id.registerDeviceBtn)
 
         registerDeviceBtn.isEnabled = false
-        registerDeviceBtn.text = "Loading..."
+        registerDeviceBtn.text = getString(R.string.loading)
 
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (!task.isSuccessful) {
-                Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show()
+                Snackbar.make(view, getString(R.string.failed_to_obtain_fcm_token), Snackbar.LENGTH_LONG).show()
                 resetRegisterButton()
                 return@addOnCompleteListener
             }
@@ -644,7 +646,7 @@ class MainActivity : AppCompatActivity() {
                             AppConstants.SHARED_PREFS_API_KEY_KEY,
                             newKey
                         )
-                        Snackbar.make(view, "Device Registration Successful :)", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(view, getString(R.string.device_registration_successful), Snackbar.LENGTH_LONG).show()
                         syncDeviceFromResponse(response, registerDeviceInput)
                         VersionTracker.updateStoredVersion(context)
                         resetRegisterButton()
@@ -682,7 +684,7 @@ class MainActivity : AppCompatActivity() {
                         AppConstants.SHARED_PREFS_API_KEY_KEY,
                         apiKey
                     )
-                    Snackbar.make(view, "Device Updated Successfully :)", Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(view, getString(R.string.device_updated_successfully), Snackbar.LENGTH_LONG).show()
                     syncDeviceFromResponse(response, registerDeviceInput)
                     VersionTracker.updateStoredVersion(context)
                     resetRegisterButton()
@@ -701,11 +703,11 @@ class MainActivity : AppCompatActivity() {
         val view = findViewById<View>(R.id.registerDeviceBtn)
 
         registerDeviceBtn.isEnabled = false
-        registerDeviceBtn.text = "Loading..."
+        registerDeviceBtn.text = getString(R.string.loading)
 
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (!task.isSuccessful) {
-                Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show()
+                Snackbar.make(view, getString(R.string.failed_to_obtain_fcm_token), Snackbar.LENGTH_LONG).show()
                 resetRegisterButton()
                 return@addOnCompleteListener
             }
@@ -735,7 +737,7 @@ class MainActivity : AppCompatActivity() {
                         )
                         syncDeviceFromResponse(response, updateDeviceInput)
                         VersionTracker.updateStoredVersion(context)
-                        Snackbar.make(view, "Device Updated Successfully :)", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(view, getString(R.string.device_updated_successfully), Snackbar.LENGTH_LONG).show()
                         resetRegisterButton()
                     }
 
@@ -817,7 +819,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleDeviceRequestFailure(view: View, t: Throwable, logMessage: String) {
-        Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show()
+        Snackbar.make(view, getString(R.string.generic_error), Snackbar.LENGTH_LONG).show()
         Log.e(TAG, "API_ERROR ${t.message}")
         Log.e(TAG, "API_ERROR ${t.localizedMessage}")
         TextBeeUtils.logException(t, logMessage)
@@ -826,7 +828,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun resetRegisterButton() {
         registerDeviceBtn.isEnabled = true
-        registerDeviceBtn.text = "Update"
+        registerDeviceBtn.text = getString(R.string.update)
     }
 
     private fun handleRequestPermissions(view: View) {
@@ -834,14 +836,14 @@ class MainActivity : AppCompatActivity() {
             TextBeeUtils.isPermissionGranted(context, permission)
         }
         if (allPermissionsGranted) {
-            Snackbar.make(view, "Already got permissions", Snackbar.LENGTH_SHORT).show()
+            Snackbar.make(view, getString(R.string.already_got_permissions), Snackbar.LENGTH_SHORT).show()
             return
         }
 
         val permissionsToRequest = AppConstants.requiredPermissions
             .filter { permission -> !TextBeeUtils.isPermissionGranted(context, permission) }
             .toTypedArray()
-        Snackbar.make(view, "Please Grant Required Permissions to continue", Snackbar.LENGTH_SHORT).show()
+        Snackbar.make(view, getString(R.string.please_grant_required_permissions), Snackbar.LENGTH_SHORT).show()
         ActivityCompat.requestPermissions(this, permissionsToRequest, PERMISSION_REQUEST_CODE)
     }
 
@@ -850,7 +852,7 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == SCAN_QR_REQUEST_CODE) {
             val intentResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
             if (intentResult == null || intentResult.contents == null) {
-                Toast.makeText(baseContext, "Canceled", Toast.LENGTH_SHORT).show()
+                Toast.makeText(baseContext, getString(R.string.canceled), Toast.LENGTH_SHORT).show()
                 return
             }
 

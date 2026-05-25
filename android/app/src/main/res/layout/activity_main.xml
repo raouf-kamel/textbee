@@ -35,7 +35,7 @@
                     android:layout_height="48dp"
                     android:layout_marginEnd="12dp"
                     android:src="@mipmap/ic_launcher"
-                    android:contentDescription="App Icon" />
+                    android:contentDescription="@string/app_icon" />
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -45,7 +45,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="textbee.dev - sms gateway"
+                        android:text="@string/app_title"
                         android:textColor="@color/white"
                         android:textSize="24sp"
                         android:textStyle="bold"
@@ -59,7 +59,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Streamline your SMS workflows"
+                        android:text="@string/app_tagline"
                         android:textColor="@color/white"
                         android:textSize="13sp"
                         android:letterSpacing="0.01"
@@ -106,7 +106,7 @@
                         android:id="@+id/deviceBrandAndModelTxt"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Device Brand, Model"
+                        android:text="@string/device_brand_model_placeholder"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -120,7 +120,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Device ID:"
+                            android:text="@string/device_id_label"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
 
@@ -129,7 +129,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="2dp"
-                            android:text="ae5ce05c05cde3"
+                            android:text="@string/device_id_placeholder"
                             android:textColor="@color/text_primary"
                             android:textSize="12sp" />
 
@@ -161,7 +161,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Status"
+                        android:text="@string/status"
                         android:textColor="@color/text_primary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -202,7 +202,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="18dp"
-                        android:text="Account Information"
+                        android:text="@string/account_information"
                         android:textColor="@color/text_primary"
                         android:textSize="19sp"
                         android:textStyle="bold"
@@ -213,14 +213,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
-                        android:hint="Device ID (optional)"
+                        android:hint="@string/device_id_optional"
                         app:boxBackgroundColor="@android:color/transparent"
                         app:boxStrokeColor="?attr/colorPrimary"
                         app:hintTextColor="?attr/colorPrimary"
                         app:endIconMode="custom"
                         app:endIconDrawable="@drawable/ic_baseline_edit_24"
                         app:endIconTint="?attr/colorPrimary"
-                        app:helperText="Leaving this field blank will register your device as new. If you have already registered this device previously, please enter the id here."
+                        app:helperText="@string/device_id_helper"
                         app:helperTextTextColor="@color/text_secondary">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -236,7 +236,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
-                        android:hint="API Key"
+                        android:hint="@string/api_key"
                         app:boxBackgroundColor="@android:color/transparent"
                         app:boxStrokeColor="?attr/colorPrimary"
                         app:hintTextColor="?attr/colorPrimary"
@@ -256,7 +256,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
-                        android:hint="Device name (optional)"
+                        android:hint="@string/device_name_optional"
                         app:boxBackgroundColor="@android:color/transparent"
                         app:boxStrokeColor="?attr/colorPrimary"
                         app:hintTextColor="?attr/colorPrimary"
@@ -278,7 +278,7 @@
                         android:ems="10"
                         android:enabled="false"
                         android:gravity="start|top"
-                        android:hint="FCM Token"
+                        android:hint="@string/fcm_token"
                         android:inputType="textMultiLine"
                         android:textColor="@color/text_primary"
                         android:textColorHint="@color/text_secondary"
@@ -297,7 +297,7 @@
                             android:backgroundTint="@color/button_background_tint"
                             android:paddingHorizontal="28dp"
                             android:paddingVertical="12dp"
-                            android:text="Connect"
+                            android:text="@string/connect"
                             android:textColor="@color/button_text_color"
                             android:textSize="15sp"
                             android:letterSpacing="0.01"
@@ -317,7 +317,7 @@
                             android:drawablePadding="6dp"
                             android:paddingHorizontal="20dp"
                             android:paddingVertical="12dp"
-                            android:text="Scan QR"
+                            android:text="@string/scan_qr"
                             android:textColor="?attr/colorPrimary"
                             android:textSize="15sp"
                             android:letterSpacing="0.01"
@@ -351,7 +351,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="18dp"
-                        android:text="Configuration"
+                        android:text="@string/configuration"
                         android:textColor="@color/text_primary"
                         android:textSize="19sp"
                         android:textStyle="bold"
@@ -367,7 +367,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="SMS Permissions"
+                            android:text="@string/sms_permissions"
                             android:textColor="@color/text_primary"
                             android:textSize="16sp"
                             android:textStyle="bold" />
@@ -379,7 +379,7 @@
                             android:backgroundTint="@color/button_background_tint"
                             android:paddingHorizontal="24dp"
                             android:paddingVertical="12dp"
-                            android:text="Grant SMS Permissions"
+                            android:text="@string/grant_sms_permissions"
                             android:textColor="@color/button_text_color"
                             android:textSize="15sp"
                             android:letterSpacing="0.01"
@@ -412,7 +412,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Receive SMS"
+                                android:text="@string/receive_sms"
                                 android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
@@ -420,7 +420,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Toggle to enable SMS receiving"
+                                android:text="@string/toggle_enable_sms_receiving"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
                         </LinearLayout>
@@ -438,7 +438,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
-                        android:text="Configure Filter"
+                        android:text="@string/configure_filter"
                         android:textColor="?attr/colorPrimary"
                         android:textSize="15sp"
                         android:letterSpacing="0.01"
@@ -465,7 +465,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Sticky Notification"
+                                android:text="@string/sticky_notification"
                                 android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
@@ -486,7 +486,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Prevents app from being killed by the system (optional, but recommended for reliability)"
+                                    android:text="@string/sticky_notification_description"
                                     android:textColor="@color/text_secondary"
                                     android:textSize="14sp" />
                             </LinearLayout>
@@ -516,7 +516,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="SMS Send Delay"
+                            android:text="@string/sms_send_delay"
                             android:textColor="@color/text_primary"
                             android:textSize="16sp"
                             android:textStyle="bold" />
@@ -526,7 +526,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:layout_marginBottom="8dp"
-                            android:text="Delay between each SMS in seconds (0 = no delay, max 3600)"
+                            android:text="@string/sms_send_delay_description"
                             android:textColor="@color/text_secondary"
                             android:textSize="14sp"
                             android:lineSpacingMultiplier="1.2" />
@@ -534,11 +534,11 @@
                         <com.google.android.material.textfield.TextInputLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Delay (seconds)"
+                            android:hint="@string/delay_seconds"
                             app:boxBackgroundColor="@android:color/transparent"
                             app:boxStrokeColor="?attr/colorPrimary"
                             app:hintTextColor="?attr/colorPrimary"
-                            app:suffixText="sec"
+                            app:suffixText="@string/seconds_suffix"
                             app:suffixTextColor="@color/text_secondary">
 
                             <com.google.android.material.textfield.TextInputEditText
@@ -561,7 +561,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Default SIM"
+                        android:text="@string/default_sim"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -570,7 +570,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="12dp"
-                        android:text="This is the default SIM that will be used for sending SMS. You can override for individual SMS by providing the specific simSubscriptionId in your API request."
+                        android:text="@string/default_sim_description"
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp"
                         android:lineSpacingMultiplier="1.2" />
@@ -605,7 +605,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="12dp"
-                        android:text="How To Use"
+                        android:text="@string/how_to_use"
                         android:textColor="@color/text_primary"
                         android:textSize="19sp"
                         android:textStyle="bold"
@@ -624,7 +624,7 @@
                             android:layout_marginEnd="12dp"
                             android:background="?attr/colorPrimary"
                             android:gravity="center"
-                            android:text="1"
+                            android:text="@string/step_one"
                             android:textColor="@color/white"
                             android:textSize="14sp"
                             android:textStyle="bold" />
@@ -633,7 +633,7 @@
                             android:id="@+id/dashboardLinkText"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Go to https://textbee.dev/dashboard"
+                            android:text="@string/go_to_dashboard"
                             android:textColor="?attr/colorPrimary"
                             android:autoLink="web"
                             android:linksClickable="true"
@@ -654,7 +654,7 @@
                             android:layout_marginEnd="12dp"
                             android:background="?attr/colorPrimary"
                             android:gravity="center"
-                            android:text="2"
+                            android:text="@string/step_two"
                             android:textColor="@color/white"
                             android:textSize="14sp"
                             android:textStyle="bold" />
@@ -662,7 +662,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Click 'Generate API Key / Get Started'"
+                            android:text="@string/click_generate_api_key"
                             android:textColor="@color/text_primary" />
                     </LinearLayout>
 
@@ -678,7 +678,7 @@
                             android:layout_marginEnd="12dp"
                             android:background="?attr/colorPrimary"
                             android:gravity="center"
-                            android:text="3"
+                            android:text="@string/step_three"
                             android:textColor="@color/white"
                             android:textSize="14sp"
                             android:textStyle="bold" />
@@ -686,7 +686,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Copy the API key or scan the QR code"
+                            android:text="@string/copy_api_key_or_scan_qr"
                             android:textColor="@color/text_primary" />
                     </LinearLayout>
                 </LinearLayout>
@@ -730,7 +730,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="App Information"
+                                android:text="@string/app_information"
                                 android:textColor="@color/text_primary"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
@@ -744,7 +744,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Version: "
+                                    android:text="@string/version_label"
                                     android:textColor="@color/text_secondary"
                                     android:textSize="14sp" />
 
@@ -752,7 +752,7 @@
                                     android:id="@+id/appVersionNameTxt"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="1.0.0"
+                                    tools:text="1.0.0"
                                     android:textColor="@color/text_primary"
                                     android:textSize="14sp"
                                     android:textStyle="bold" />
@@ -760,7 +760,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text=" (Build: "
+                                    android:text="@string/build_prefix"
                                     android:textColor="@color/text_secondary"
                                     android:textSize="14sp"
                                     android:layout_marginStart="4dp" />
@@ -769,14 +769,14 @@
                                     android:id="@+id/appVersionCodeTxt"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="100"
+                                    tools:text="100"
                                     android:textColor="@color/text_primary"
                                     android:textSize="14sp" />
                                     
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text=")"
+                                    android:text="@string/closing_parenthesis"
                                     android:textColor="@color/text_secondary"
                                     android:textSize="14sp" />
                             </LinearLayout>
@@ -786,7 +786,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:text="Check for Updates"
+                                android:text="@string/check_for_updates"
                                 android:textColor="?attr/colorPrimary"
                                 android:background="@android:color/transparent"
                                 android:textAllCaps="false"

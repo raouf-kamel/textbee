@@ -64,7 +64,7 @@ class StickyNotificationService : Service() {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val channel = NotificationChannel(
                 notificationChannelId,
-                notificationChannelId,
+                getString(R.string.notification_channel_sticky),
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
                 enableVibration(false)
@@ -81,16 +81,16 @@ class StickyNotificationService : Service() {
             )
 
             Notification.Builder(this, notificationChannelId)
-                .setContentTitle("TextBee Active")
-                .setContentText("SMS gateway service is active")
+                .setContentTitle(getString(R.string.textbee_active))
+                .setContentText(getString(R.string.sms_gateway_service_active))
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .build()
         } else {
             NotificationCompat.Builder(this, notificationChannelId)
-                .setContentTitle("TextBee Active")
-                .setContentText("SMS gateway service is active")
+                .setContentTitle(getString(R.string.textbee_active))
+                .setContentText(getString(R.string.sms_gateway_service_active))
                 .setOngoing(true)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .build()

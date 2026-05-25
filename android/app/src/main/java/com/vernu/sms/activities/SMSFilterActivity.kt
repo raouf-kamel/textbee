@@ -96,12 +96,21 @@ class SMSFilterActivity : AppCompatActivity() {
         val cancelButton = dialogView.findViewById<Button>(R.id.cancelButton)
         val saveButton = dialogView.findViewById<Button>(R.id.saveButton)
 
-        val filterTargets = arrayOf("Sender", "Message", "Both")
+        val filterTargets = arrayOf(
+            getString(R.string.sender),
+            getString(R.string.message),
+            getString(R.string.both)
+        )
         val targetAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, filterTargets)
         targetAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         filterTargetSpinner.adapter = targetAdapter
 
-        val matchTypes = arrayOf("Exact Match", "Starts With", "Ends With", "Contains")
+        val matchTypes = arrayOf(
+            getString(R.string.exact_match),
+            getString(R.string.starts_with),
+            getString(R.string.ends_with),
+            getString(R.string.contains)
+        )
         val spinnerAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, matchTypes)
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         matchTypeSpinner.adapter = spinnerAdapter
@@ -114,7 +123,7 @@ class SMSFilterActivity : AppCompatActivity() {
             filterTargetSpinner.setSelection(rule.filterTarget.ordinal)
             matchTypeSpinner.setSelection((rule.matchType ?: SMSFilterRule.MatchType.EXACT).ordinal)
             caseSensitiveSwitch.isChecked = rule.isCaseSensitive()
-            dialogTitle?.text = "Edit Filter Rule"
+            dialogTitle?.text = getString(R.string.edit_filter_rule)
         } else {
             caseSensitiveSwitch.isChecked = false
         }
@@ -126,7 +135,7 @@ class SMSFilterActivity : AppCompatActivity() {
         saveButton.setOnClickListener {
             val pattern = patternEditText.text?.toString()?.trim().orEmpty()
             if (pattern.isEmpty()) {
-                Toast.makeText(this, "Please enter a pattern", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.please_enter_pattern), Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -156,14 +165,14 @@ class SMSFilterActivity : AppCompatActivity() {
 
     private fun deleteRule(position: Int) {
         AlertDialog.Builder(this)
-            .setTitle("Delete Rule")
-            .setMessage("Are you sure you want to delete this filter rule?")
-            .setPositiveButton("Delete") { _, _ ->
+            .setTitle(getString(R.string.delete_rule_title))
+            .setMessage(getString(R.string.delete_rule_message))
+            .setPositiveButton(getString(R.string.delete)) { _, _ ->
                 filterConfig.getRules().removeAt(position)
                 adapter.notifyItemRemoved(position)
                 saveFilterConfig()
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.cancel), null)
             .show()
     }
 
@@ -181,19 +190,23 @@ class SMSFilterActivity : AppCompatActivity() {
             holder.patternText.text = rule.pattern
 
             holder.matchTypeText.text = when (rule.matchType) {
-                SMSFilterRule.MatchType.EXACT -> "Exact Match"
-                SMSFilterRule.MatchType.STARTS_WITH -> "Starts With"
-                SMSFilterRule.MatchType.ENDS_WITH -> "Ends With"
-                SMSFilterRule.MatchType.CONTAINS -> "Contains"
+                SMSFilterRule.MatchType.EXACT -> getString(R.string.exact_match)
+                SMSFilterRule.MatchType.STARTS_WITH -> getString(R.string.starts_with)
+                SMSFilterRule.MatchType.ENDS_WITH -> getString(R.string.ends_with)
+                SMSFilterRule.MatchType.CONTAINS -> getString(R.string.contains)
                 null -> ""
             }
 
             val filterTargetText = when (rule.filterTarget) {
-                SMSFilterRule.FilterTarget.SENDER -> "Filter: Sender"
-                SMSFilterRule.FilterTarget.MESSAGE -> "Filter: Message"
-                SMSFilterRule.FilterTarget.BOTH -> "Filter: Sender or Message"
+                SMSFilterRule.FilterTarget.SENDER -> getString(R.string.filter_sender)
+                SMSFilterRule.FilterTarget.MESSAGE -> getString(R.string.filter_message)
+                SMSFilterRule.FilterTarget.BOTH -> getString(R.string.filter_sender_or_message)
             }
-            val caseText = if (rule.isCaseSensitive()) " (Case Sensitive)" else " (Case Insensitive)"
+            val caseText = if (rule.isCaseSensitive()) {
+                getString(R.string.case_sensitive_suffix)
+            } else {
+                getString(R.string.case_insensitive_suffix)
+            }
             holder.filterTargetText.text = filterTargetText + caseText
 
             holder.editButton.setOnClickListener { showAddEditRuleDialog(position) }
