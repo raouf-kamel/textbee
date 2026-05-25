@@ -8,6 +8,7 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import com.vernu.sms.ApiManager
 import com.vernu.sms.AppConstants
 import com.vernu.sms.TextBeeUtils
 import com.vernu.sms.helpers.SMSHelper
@@ -31,6 +32,13 @@ class SmsSendWorker(
 
         val context = applicationContext
         val resolvedSim = resolveSim(context, simSubscriptionId)
+
+        if (!shouldSend(context, smsId)) {
+            Log.i(TAG, "SMS skipped because server reported it should not be sent - ID: $smsId")
+            return Result.success()
+        }
+
+        SMSStatusUpdateWorker.enqueueStatus(context, smsId, smsBatchId, "SENDING")
 
         if (resolvedSim != null) {
             SMSHelper.sendSMSFromSpecificSim(phone, message, resolvedSim, smsId, smsBatchId, context)
@@ -72,6 +80,39 @@ class SmsSendWorker(
         }
 
         return null
+    }
+
+    private fun shouldSend(context: Context, smsId: String): Boolean {
+        val deviceId = SharedPreferenceHelper.getSharedPreferenceString(
+            context,
+            AppConstants.SHARED_PREFS_DEVICE_ID_KEY,
+            "",
+        ).orEmpty()
+        val apiKey = SharedPreferenceHelper.getSharedPreferenceString(
+            context,
+            AppConstants.SHARED_PREFS_API_KEY_KEY,
+            "",
+        ).orEmpty()
+
+        if (deviceId.isEmpty() || apiKey.isEmpty()) {
+            return true
+        }
+
+        return try {
+            val response = ApiManager.getApiService()
+                .checkSMSSendEligibility(deviceId, smsId, apiKey)
+                .execute()
+
+            if (response.isSuccessful) {
+                response.body()?.data?.canSend ?: true
+            } else {
+                Log.w(TAG, "Send eligibility check failed with response code: ${response.code()}")
+                true
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Send eligibility check failed: ${e.message}")
+            true
+        }
     }
 
     companion object {

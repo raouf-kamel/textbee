@@ -6,8 +6,10 @@ import com.vernu.sms.dtos.RegisterDeviceInputDTO
 import com.vernu.sms.dtos.RegisterDeviceResponseDTO
 import com.vernu.sms.dtos.SMSDTO
 import com.vernu.sms.dtos.SMSForwardResponseDTO
+import com.vernu.sms.dtos.SendEligibilityResponseDTO
 import retrofit2.Call
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -40,6 +42,13 @@ interface GatewayApiService {
         @Header("x-api-key") apiKey: String?,
         @Body body: SMSDTO,
     ): Call<SMSForwardResponseDTO>
+
+    @GET("gateway/devices/{deviceId}/sms/{smsId}/send-eligibility")
+    fun checkSMSSendEligibility(
+        @Path("deviceId") deviceId: String?,
+        @Path("smsId") smsId: String?,
+        @Header("x-api-key") apiKey: String?,
+    ): Call<SendEligibilityResponseDTO>
 
     @POST("gateway/devices/{deviceId}/heartbeat")
     fun heartbeat(

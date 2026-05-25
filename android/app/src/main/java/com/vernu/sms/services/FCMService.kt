@@ -22,6 +22,7 @@ import com.vernu.sms.helpers.HeartbeatHelper
 import com.vernu.sms.helpers.HeartbeatManager
 import com.vernu.sms.helpers.SharedPreferenceHelper
 import com.vernu.sms.models.SMSPayload
+import com.vernu.sms.workers.SMSStatusUpdateWorker
 import com.vernu.sms.workers.SmsSendWorker
 import retrofit2.Call
 import retrofit2.Callback
@@ -102,6 +103,12 @@ class FCMService : FirebaseMessagingService() {
         }
 
         for (recipient in recipients) {
+            SMSStatusUpdateWorker.enqueueStatus(
+                this,
+                smsId,
+                smsPayload.smsBatchId,
+                "RECEIVED_BY_DEVICE",
+            )
             SmsSendWorker.enqueue(
                 this,
                 recipient,

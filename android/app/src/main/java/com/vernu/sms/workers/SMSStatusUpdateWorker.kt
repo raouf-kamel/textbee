@@ -13,7 +13,9 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.google.gson.Gson
 import com.vernu.sms.ApiManager
+import com.vernu.sms.AppConstants
 import com.vernu.sms.dtos.SMSDTO
+import com.vernu.sms.helpers.SharedPreferenceHelper
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -90,6 +92,43 @@ class SMSStatusUpdateWorker(
                 .enqueue()
 
             Log.d(TAG, "Work enqueued for SMS status update - ID: ${smsDTO.smsId}")
+        }
+
+        @JvmStatic
+        fun enqueueStatus(
+            context: Context,
+            smsId: String,
+            smsBatchId: String?,
+            status: String,
+            timestampInMillis: Long = System.currentTimeMillis(),
+        ) {
+            val deviceId = SharedPreferenceHelper.getSharedPreferenceString(
+                context,
+                AppConstants.SHARED_PREFS_DEVICE_ID_KEY,
+                "",
+            ).orEmpty()
+            val apiKey = SharedPreferenceHelper.getSharedPreferenceString(
+                context,
+                AppConstants.SHARED_PREFS_API_KEY_KEY,
+                "",
+            ).orEmpty()
+
+            if (deviceId.isEmpty() || apiKey.isEmpty()) {
+                Log.e(TAG, "Device ID or API key not found")
+                return
+            }
+
+            val smsDTO = SMSDTO().apply {
+                this.smsId = smsId
+                this.smsBatchId = smsBatchId
+                this.status = status
+                when (status) {
+                    "RECEIVED_BY_DEVICE" -> receivedByDeviceAtInMillis = timestampInMillis
+                    "SENDING" -> sendingAtInMillis = timestampInMillis
+                }
+            }
+
+            enqueueWork(context, deviceId, apiKey, smsDTO)
         }
     }
 }

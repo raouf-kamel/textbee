@@ -8,6 +8,8 @@ class SMSDTO {
     var smsId: String? = null
     var smsBatchId: String? = null
     var status: String? = null
+    var receivedByDeviceAtInMillis: Long = 0
+    var sendingAtInMillis: Long = 0
     var sentAtInMillis: Long = 0
     var deliveredAtInMillis: Long = 0
     var failedAtInMillis: Long = 0
