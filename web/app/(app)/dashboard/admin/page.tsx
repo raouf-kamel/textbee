@@ -189,14 +189,17 @@ function extractErrorMessage(error: any, fallback: string) {
   return fallback
 }
 
-function formatLimit(limit?: number) {
-  if (limit === -1) return 'Unlimited'
+function formatLimit(limit?: number, unlimitedLabel = 'Unlimited') {
+  if (limit === -1) return unlimitedLabel
   if (limit === undefined || limit === null) return '-'
   return limit.toLocaleString()
 }
 
-function formatDeviceName(device: DeviceMonitoringDevice) {
-  return device.name || [device.brand, device.model].filter(Boolean).join(' ') || 'Unknown Device'
+function formatDeviceName(
+  device: DeviceMonitoringDevice,
+  unknownLabel = 'Unknown Device'
+) {
+  return device.name || [device.brand, device.model].filter(Boolean).join(' ') || unknownLabel
 }
 
 function formatHeartbeat(timestamp?: string) {
@@ -228,45 +231,60 @@ function formatVersion(device: DeviceMonitoringDevice) {
   return `${androidVersion} / ${appVersion || 'App -'}`
 }
 
-function getDeviceConnectionBadge(device: DeviceMonitoringDevice) {
+function getDeviceConnectionBadge(
+  device: DeviceMonitoringDevice,
+  t: (key: any, values?: any) => string
+) {
   if (device.connectionStatus === 'disabled') {
     return {
-      label: 'Disabled',
+      label: t('devices.disabled'),
       className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
       icon: <WifiOff className='h-3 w-3' />,
     }
   }
   if (device.connectionStatus === 'fcm_invalid') {
     return {
-      label: 'FCM Invalid',
+      label: t('admin.fcmInvalid'),
       className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
       icon: <AlertCircle className='h-3 w-3' />,
     }
   }
   if (device.isOnline) {
     return {
-      label: 'Online',
+      label: t('admin.online'),
       className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
       icon: <Wifi className='h-3 w-3' />,
     }
   }
   return {
-    label: 'Offline',
+    label: t('admin.offline'),
     className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
     icon: <WifiOff className='h-3 w-3' />,
   }
 }
 
-function formatBattery(device: DeviceMonitoringDevice) {
-  if (typeof device.batteryInfo?.percentage !== 'number') return 'Battery -'
-  const charging = device.batteryInfo.isCharging ? 'charging' : 'not charging'
+function formatBattery(
+  device: DeviceMonitoringDevice,
+  t: (key: any, values?: any) => string
+) {
+  if (typeof device.batteryInfo?.percentage !== 'number') {
+    return t('admin.batteryUnavailable')
+  }
+  const charging = device.batteryInfo.isCharging
+    ? t('admin.charging')
+    : t('admin.notCharging')
   return `${device.batteryInfo.percentage}% ${charging}`
 }
 
-function formatNetwork(device: DeviceMonitoringDevice) {
+function formatNetwork(
+  device: DeviceMonitoringDevice,
+  t: (key: any, values?: any) => string
+) {
   const network = device.networkInfo?.networkType
-  if (!network) return 'Network -'
-  return network.charAt(0).toUpperCase() + network.slice(1)
+  if (!network) return t('admin.networkUnavailable')
+  if (network === 'wifi') return t('admin.wifi')
+  if (network === 'cellular') return t('admin.cellular')
+  return t('admin.noNetwork')
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -315,42 +333,45 @@ function PlanBadge({ planName }: { planName: string }) {
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ isBanned, emailVerifiedAt }: { isBanned: boolean; emailVerifiedAt: string | null }) {
+  const { t } = useI18n()
   if (isBanned)
     return (
       <span className='inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-300'>
-        <ShieldX className='h-3 w-3' /> Banned
+        <ShieldX className='h-3 w-3' /> {t('common.banned')}
       </span>
     )
   if (!emailVerifiedAt)
     return (
       <span className='inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-semibold text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-300'>
-        Unverified
+        {t('common.unverified')}
       </span>
     )
   return (
     <span className='inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-300'>
-      <CheckCircle2 className='h-3 w-3' /> Active
+      <CheckCircle2 className='h-3 w-3' /> {t('common.active')}
     </span>
   )
 }
 
 // ─── Role Badge ───────────────────────────────────────────────────────────────
 function RoleBadge({ role }: { role: string }) {
+  const { t } = useI18n()
   if (role === 'ADMIN')
     return (
       <span className='inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-300'>
-        <ShieldCheck className='h-3 w-3' /> Admin
+        <ShieldCheck className='h-3 w-3' /> {t('common.adminRole')}
       </span>
     )
   return (
     <span className='inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-300'>
-      User
+      {t('common.user')}
     </span>
   )
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 function DeviceMonitoringSection() {
+  const { t } = useI18n()
   const {
     data,
     isLoading,
@@ -368,9 +389,11 @@ function DeviceMonitoringSection() {
     <div className='rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
       <div className='flex flex-col gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-700 sm:flex-row sm:items-center sm:justify-between'>
         <div>
-          <h2 className='text-base font-semibold text-gray-900 dark:text-white'>Device Monitoring</h2>
+          <h2 className='text-base font-semibold text-gray-900 dark:text-white'>
+            {t('admin.deviceMonitoring')}
+          </h2>
           <p className='text-xs text-gray-500 dark:text-gray-400'>
-            Online status, heartbeat freshness, app versions, and pending SMS pressure.
+            {t('admin.deviceMonitoringDescription')}
           </p>
         </div>
         <button
@@ -378,7 +401,7 @@ function DeviceMonitoringSection() {
           className='flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
         >
           <RefreshCw className='h-4 w-4' />
-          Refresh Devices
+          {t('admin.refreshDevices')}
         </button>
       </div>
 
@@ -386,31 +409,31 @@ function DeviceMonitoringSection() {
         <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-5'>
           {[
             {
-              label: 'Online',
+              label: t('admin.online'),
               value: summary?.onlineDevices ?? 0,
               icon: <Wifi className='h-4 w-4 text-green-600 dark:text-green-300' />,
               tone: 'bg-green-50 text-green-700 border-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/40',
             },
             {
-              label: 'Offline',
+              label: t('admin.offline'),
               value: summary?.offlineDevices ?? 0,
               icon: <WifiOff className='h-4 w-4 text-red-600 dark:text-red-300' />,
               tone: 'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40',
             },
             {
-              label: 'Stale Heartbeat',
+              label: t('admin.staleHeartbeat'),
               value: summary?.staleHeartbeatDevices ?? 0,
               icon: <AlertCircle className='h-4 w-4 text-amber-600 dark:text-amber-300' />,
               tone: 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-900/40',
             },
             {
-              label: 'High Pending',
+              label: t('admin.highPending'),
               value: summary?.highPendingDevices ?? 0,
               icon: <MessageSquareText className='h-4 w-4 text-blue-600 dark:text-blue-300' />,
               tone: 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/40',
             },
             {
-              label: 'Pending SMS',
+              label: t('admin.pendingSms'),
               value: summary?.pendingMessagesTotal ?? 0,
               icon: <Activity className='h-4 w-4 text-purple-600 dark:text-purple-300' />,
               tone: 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-900/40',
@@ -427,32 +450,36 @@ function DeviceMonitoringSection() {
         </div>
 
         <div className='flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400'>
-          <span>{summary?.totalDevices ?? 0} total devices</span>
-          <span>{summary?.enabledDevices ?? 0} enabled</span>
-          <span>{summary?.disabledDevices ?? 0} disabled</span>
-          <span>Stale after {thresholds?.staleHeartbeatMinutes ?? 30} minutes</span>
-          <span>High pending at {thresholds?.highPendingSMS ?? 5}+ SMS</span>
+          <span>{t('admin.totalDevicesInline', { count: summary?.totalDevices ?? 0 })}</span>
+          <span>{t('admin.enabledDevicesInline', { count: summary?.enabledDevices ?? 0 })}</span>
+          <span>{t('admin.disabledDevicesInline', { count: summary?.disabledDevices ?? 0 })}</span>
+          <span>{t('admin.staleAfterMinutes', { minutes: thresholds?.staleHeartbeatMinutes ?? 30 })}</span>
+          <span>{t('admin.highPendingAt', { count: thresholds?.highPendingSMS ?? 5 })}</span>
         </div>
 
         <div>
           <div className='mb-3 flex items-center justify-between'>
-            <h3 className='text-sm font-semibold text-gray-800 dark:text-gray-100'>Devices needing attention</h3>
-            <span className='text-xs text-gray-500 dark:text-gray-400'>{attentionDevices.length} shown</span>
+            <h3 className='text-sm font-semibold text-gray-800 dark:text-gray-100'>
+              {t('admin.devicesNeedingAttention')}
+            </h3>
+            <span className='text-xs text-gray-500 dark:text-gray-400'>
+              {t('admin.shownCount', { count: attentionDevices.length })}
+            </span>
           </div>
 
           <div className='overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700'>
             <table className='w-full min-w-[1120px] text-sm'>
               <thead className='bg-gray-50 dark:bg-gray-700/40'>
                 <tr>
-                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Device</th>
-                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Status</th>
-                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Last heartbeat</th>
-                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Heartbeat age</th>
-                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Versions</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('sms.device')}</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('common.status')}</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('admin.lastHeartbeat')}</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('admin.heartbeatAge')}</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('admin.versions')}</th>
                   <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>FCM</th>
-                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Battery / Network</th>
-                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Pending</th>
-                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>User</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('admin.batteryNetwork')}</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('sms.statusPending')}</th>
+                  <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('common.user')}</th>
                 </tr>
               </thead>
               <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
@@ -469,16 +496,16 @@ function DeviceMonitoringSection() {
                 ) : attentionDevices.length === 0 ? (
                   <tr>
                     <td colSpan={9} className='px-3 py-8 text-center text-gray-400'>
-                      No devices need attention
+                      {t('admin.noDevicesNeedAttention')}
                     </td>
                   </tr>
                 ) : (
                   attentionDevices.map((device) => {
-                    const connectionBadge = getDeviceConnectionBadge(device)
+                    const connectionBadge = getDeviceConnectionBadge(device, t)
                     return (
                       <tr key={device._id}>
                         <td className='px-3 py-3'>
-                          <p className='font-medium text-gray-900 dark:text-white'>{formatDeviceName(device)}</p>
+                          <p className='font-medium text-gray-900 dark:text-white'>{formatDeviceName(device, t('admin.unknownDevice'))}</p>
                           <p className='text-xs text-gray-400'>{device.brand || '-'} {device.model || ''}</p>
                         </td>
                         <td className='px-3 py-3'>
@@ -503,7 +530,7 @@ function DeviceMonitoringSection() {
                                 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
                                 : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                             }`}>
-                              {device.fcmTokenStatus === 'invalid' ? 'Invalid' : 'Valid'}
+                              {device.fcmTokenStatus === 'invalid' ? t('admin.invalid') : t('admin.valid')}
                             </span>
                             {device.fcmTokenInvalidReason && (
                               <p className='line-clamp-2 text-xs text-orange-600 dark:text-orange-300' title={device.fcmTokenInvalidReason}>
@@ -513,8 +540,8 @@ function DeviceMonitoringSection() {
                           </div>
                         </td>
                         <td className='px-3 py-3 text-xs text-gray-600 dark:text-gray-300'>
-                          <p>{formatBattery(device)}</p>
-                          <p className='text-gray-400'>{formatNetwork(device)}</p>
+                          <p>{formatBattery(device, t)}</p>
+                          <p className='text-gray-400'>{formatNetwork(device, t)}</p>
                         </td>
                         <td className='px-3 py-3'>
                           <div className='space-y-1'>
@@ -526,7 +553,7 @@ function DeviceMonitoringSection() {
                               {device.pendingSMSCount}
                             </span>
                             <p className='text-xs text-gray-400'>
-                              Delay {device.smsSendDelaySeconds ?? 5}s
+                              {t('admin.delaySeconds', { seconds: device.smsSendDelaySeconds ?? 5 })}
                             </p>
                           </div>
                         </td>
@@ -552,17 +579,20 @@ function DeviceMonitoringSection() {
 }
 
 function OverviewSection({ stats, isLoading }: { stats?: Stats; isLoading: boolean }) {
+  const { t } = useI18n()
   return (
     <div className='rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
       <div className='border-b border-gray-200 px-5 py-4 dark:border-gray-700'>
-        <h2 className='text-base font-semibold text-gray-900 dark:text-white'>Overview</h2>
-        <p className='text-xs text-gray-500 dark:text-gray-400'>System snapshot and active plan distribution.</p>
+        <h2 className='text-base font-semibold text-gray-900 dark:text-white'>{t('admin.overview')}</h2>
+        <p className='text-xs text-gray-500 dark:text-gray-400'>
+          {t('admin.overviewDescription')}
+        </p>
       </div>
       <div className='grid gap-4 p-5 md:grid-cols-3'>
         {[
-          ['Free Plans', stats?.planCounts?.free ?? 0, 'bg-gray-50 text-gray-700 dark:bg-gray-700/40 dark:text-gray-200'],
-          ['Pro Plans', stats?.planCounts?.pro ?? 0, 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'],
-          ['Custom Plans', stats?.planCounts?.custom ?? 0, 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300'],
+          [t('admin.freePlansLabel'), stats?.planCounts?.free ?? 0, 'bg-gray-50 text-gray-700 dark:bg-gray-700/40 dark:text-gray-200'],
+          [t('admin.proPlansLabel'), stats?.planCounts?.pro ?? 0, 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300'],
+          [t('admin.customPlansLabel'), stats?.planCounts?.custom ?? 0, 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300'],
         ].map(([label, value, tone]) => (
           <div key={label} className={`rounded-xl border border-gray-200 p-4 dark:border-gray-700 ${tone}`}>
             <p className='text-xs font-semibold uppercase'>{label}</p>
@@ -575,6 +605,7 @@ function OverviewSection({ stats, isLoading }: { stats?: Stats; isLoading: boole
 }
 
 function PlanManagementSection() {
+  const { t } = useI18n()
   const [form, setForm] = useState<PlanFormState>(emptyPlanForm)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -607,14 +638,14 @@ function PlanManagementSection() {
       return httpBrowserClient.post(ApiEndpoints.admin.upsertPlan(), payload)
     },
     onSuccess: () => {
-      setMessage(form.id ? 'Plan updated successfully' : 'Plan created successfully')
+      setMessage(form.id ? t('admin.planUpdated') : t('admin.planCreated'))
       setError('')
       setForm(emptyPlanForm)
       refetch()
       setTimeout(() => setMessage(''), 3000)
     },
     onError: (err) => {
-      setError(extractErrorMessage(err, 'Failed to save plan'))
+      setError(extractErrorMessage(err, t('admin.failedSavePlan')))
       setMessage('')
     },
   })
@@ -644,8 +675,8 @@ function PlanManagementSection() {
   return (
     <div className='rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
       <div className='flex flex-col gap-1 border-b border-gray-200 dark:border-gray-700 px-5 py-4'>
-        <h2 className='text-base font-semibold text-gray-900 dark:text-white'>Billing Plans</h2>
-        <p className='text-xs text-gray-500 dark:text-gray-400'>Create and update plan limits without editing Mongo manually.</p>
+        <h2 className='text-base font-semibold text-gray-900 dark:text-white'>{t('admin.billingPlans')}</h2>
+        <p className='text-xs text-gray-500 dark:text-gray-400'>{t('admin.billingPlansDescription')}</p>
       </div>
 
       <div className='grid gap-4 p-5 lg:grid-cols-[1fr_360px]'>
@@ -653,33 +684,33 @@ function PlanManagementSection() {
           <table className='w-full text-sm'>
             <thead>
               <tr className='border-b border-gray-100 dark:border-gray-700'>
-                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Plan</th>
-                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Daily</th>
-                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Monthly</th>
-                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Bulk</th>
-                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Status</th>
-                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Action</th>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('admin.plan')}</th>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('account.daily')}</th>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('account.monthlyLimit')}</th>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('account.bulk')}</th>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('common.status')}</th>
+                <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('admin.action')}</th>
               </tr>
             </thead>
             <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className='px-3 py-6 text-center text-gray-400'>Loading plans...</td>
+                  <td colSpan={6} className='px-3 py-6 text-center text-gray-400'>{t('admin.loadingPlans')}</td>
                 </tr>
               ) : plans.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className='px-3 py-6 text-center text-gray-400'>No plans found</td>
+                  <td colSpan={6} className='px-3 py-6 text-center text-gray-400'>{t('admin.noPlansFound')}</td>
                 </tr>
               ) : (
                 plans.map((plan) => (
                   <tr key={plan._id ?? plan.name}>
                     <td className='px-3 py-2 font-medium capitalize text-gray-900 dark:text-white'>{plan.name}</td>
-                    <td className='px-3 py-2 text-gray-600 dark:text-gray-300'>{formatLimit(plan.dailyLimit)}</td>
-                    <td className='px-3 py-2 text-gray-600 dark:text-gray-300'>{formatLimit(plan.monthlyLimit)}</td>
-                    <td className='px-3 py-2 text-gray-600 dark:text-gray-300'>{formatLimit(plan.bulkSendLimit)}</td>
+                    <td className='px-3 py-2 text-gray-600 dark:text-gray-300'>{formatLimit(plan.dailyLimit, t('account.unlimited'))}</td>
+                    <td className='px-3 py-2 text-gray-600 dark:text-gray-300'>{formatLimit(plan.monthlyLimit, t('account.unlimited'))}</td>
+                    <td className='px-3 py-2 text-gray-600 dark:text-gray-300'>{formatLimit(plan.bulkSendLimit, t('account.unlimited'))}</td>
                     <td className='px-3 py-2'>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${plan.isActive === false ? 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'}`}>
-                        {plan.isActive === false ? 'Inactive' : 'Active'}
+                        {plan.isActive === false ? t('webhooks.inactive') : t('common.active')}
                       </span>
                     </td>
                     <td className='px-3 py-2'>
@@ -687,7 +718,7 @@ function PlanManagementSection() {
                         onClick={() => editPlan(plan)}
                         className='rounded-lg border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-300'
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                     </td>
                   </tr>
@@ -699,23 +730,23 @@ function PlanManagementSection() {
 
         <div className='rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/30'>
           <div className='mb-3 flex items-center justify-between'>
-            <h3 className='text-sm font-semibold text-gray-900 dark:text-white'>{form.id ? 'Edit Plan' : 'New Plan'}</h3>
+            <h3 className='text-sm font-semibold text-gray-900 dark:text-white'>{form.id ? t('admin.editPlan') : t('admin.newPlan')}</h3>
             {form.id && (
-              <button onClick={() => setForm(emptyPlanForm)} className='text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'>New</button>
+              <button onClick={() => setForm(emptyPlanForm)} className='text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'>{t('admin.new')}</button>
             )}
           </div>
           <div className='space-y-3'>
             <input
               value={form.name}
               onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
-              placeholder='Plan name'
+              placeholder={t('admin.planName')}
               className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
             />
             <div className='grid grid-cols-3 gap-2'>
               {[
-                ['dailyLimit', 'Daily'],
-                ['monthlyLimit', 'Monthly'],
-                ['bulkSendLimit', 'Bulk'],
+                ['dailyLimit', t('account.daily')],
+                ['monthlyLimit', t('account.monthlyLimit')],
+                ['bulkSendLimit', t('account.bulk')],
               ].map(([field, label]) => (
                 <div key={field}>
                   <label className='text-xs text-gray-500'>{label}</label>
@@ -734,14 +765,14 @@ function PlanManagementSection() {
                 type='number'
                 value={form.monthlyPrice}
                 onChange={(e) => setForm((current) => ({ ...current, monthlyPrice: e.target.value }))}
-                placeholder='Monthly price'
+                placeholder={t('admin.monthlyPrice')}
                 className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
               />
               <input
                 type='number'
                 value={form.yearlyPrice}
                 onChange={(e) => setForm((current) => ({ ...current, yearlyPrice: e.target.value }))}
-                placeholder='Yearly price'
+                placeholder={t('admin.yearlyPrice')}
                 className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
               />
             </div>
@@ -752,7 +783,7 @@ function PlanManagementSection() {
                 onChange={(e) => setForm((current) => ({ ...current, isActive: e.target.checked }))}
                 className='h-4 w-4 rounded border-gray-300 text-purple-600'
               />
-              Active plan
+              {t('admin.activePlan')}
             </label>
             {message && <p className='rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-900/20 dark:text-green-300'>{message}</p>}
             {error && <p className='rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-300'>{error}</p>}
@@ -761,7 +792,7 @@ function PlanManagementSection() {
               disabled={saveDisabled}
               className='w-full rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60'
             >
-              {savePlanMutation.isPending ? 'Saving...' : form.id ? 'Save Plan' : 'Create Plan'}
+              {savePlanMutation.isPending ? t('admin.saving') : form.id ? t('admin.savePlan') : t('admin.createPlan')}
             </button>
           </div>
         </div>

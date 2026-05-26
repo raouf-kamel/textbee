@@ -4,10 +4,12 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { ShieldAlert } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { t } = useI18n()
 
   useEffect(() => {
     if (status === 'loading') return
@@ -33,8 +35,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Admin Header Banner */}
       <div className='bg-gradient-to-r from-purple-700 to-indigo-700 text-white px-6 py-3 flex items-center gap-3 shadow-md'>
         <ShieldAlert className='h-5 w-5' />
-        <span className='font-semibold text-sm tracking-wide'>Admin Control Panel</span>
-        <span className='ml-auto text-xs opacity-75'>Logged in as: {session.user?.email}</span>
+        <span className='font-semibold text-sm tracking-wide'>
+          {t('admin.controlPanel')}
+        </span>
+        <span className='ml-auto text-xs opacity-75'>
+          {t('admin.loggedInAs', { email: session.user?.email ?? '' })}
+        </span>
       </div>
       <div className='p-4 md:p-6'>
         {children}

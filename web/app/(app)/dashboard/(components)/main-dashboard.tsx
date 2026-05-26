@@ -28,7 +28,7 @@ export default function DashboardOverview() {
     >
       <TabsList className='sticky top-[4rem] z-10 flex mx-auto max-w-md border-[1px] my-6 bg-brand-500 text-white '>
         <TabsTrigger value='overview' className='flex-1'>
-          Overview
+          {t('admin.overview')}
         </TabsTrigger>
         <TabsTrigger value='messaging' className='relative flex-1'>
           <MessageSquare className='ml-2 h-4 w-4' />

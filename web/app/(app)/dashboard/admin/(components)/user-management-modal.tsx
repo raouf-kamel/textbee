@@ -177,8 +177,8 @@ function extractErrorMessage(error: any, fallback: string) {
   return fallback
 }
 
-function formatLimit(limit?: number) {
-  if (limit === -1) return 'Unlimited'
+function formatLimit(limit?: number, unlimitedLabel = 'Unlimited') {
+  if (limit === -1) return unlimitedLabel
   if (limit === undefined || limit === null) return '-'
   return limit.toLocaleString()
 }
@@ -328,10 +328,11 @@ function DeviceCard({
   onDelete: (id: string) => void
   onEdit: (device: Device) => void
 }) {
+  const { t } = useI18n()
   const [deleting, setDeleting] = useState(false)
 
   const handleDelete = async () => {
-    if (!confirm(`Delete device "${device.name || device.model || device._id}"?`)) return
+    if (!confirm(t('admin.deleteDeviceConfirm', { name: device.name || device.model || device._id }))) return
     setDeleting(true)
     try {
       await onDelete(device._id)
@@ -348,10 +349,10 @@ function DeviceCard({
         </div>
         <div className='min-w-0'>
           <p className='text-sm font-medium text-gray-900 dark:text-white truncate'>
-            {device.name || device.model || 'Unknown Device'}
+            {device.name || device.model || t('admin.unknownDevice')}
           </p>
           <p className='text-xs text-gray-400 truncate'>
-            {[device.brand, device.os, device.osVersion].filter(Boolean).join(' · ')} · {device.sentSMSCount} SMS sent
+            {[device.brand, device.os, device.osVersion].filter(Boolean).join(' - ')} - {t('admin.smsSentCount', { count: device.sentSMSCount })}
           </p>
         </div>
       </div>
@@ -360,7 +361,7 @@ function DeviceCard({
           onClick={() => onEdit(device)}
           className='rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
         >
-          Edit
+          {t('common.edit')}
         </button>
         <button
           onClick={handleDelete}
@@ -368,7 +369,7 @@ function DeviceCard({
           className='flex items-center gap-1 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-2.5 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50 transition-colors'
         >
           {deleting ? <Loader2 className='h-3 w-3 animate-spin' /> : <Trash2 className='h-3 w-3' />}
-          Delete
+          {t('common.delete')}
         </button>
       </div>
     </div>
@@ -473,14 +474,14 @@ export default function UserManagementModal({
   // Mutations
   const roleMutation = useMutation({
     mutationFn: () => httpBrowserClient.patch(ApiEndpoints.admin.updateRole(user._id), { role }),
-    onSuccess: () => showSuccess('Role updated successfully'),
-    onError: (error) => showError(extractErrorMessage(error, 'Failed to update role')),
+    onSuccess: () => showSuccess(t('admin.roleUpdated')),
+    onError: (error) => showError(extractErrorMessage(error, t('admin.failedUpdateRole'))),
   })
 
   const banMutation = useMutation({
     mutationFn: () => httpBrowserClient.patch(ApiEndpoints.admin.toggleBan(user._id), { isBanned }),
-    onSuccess: () => showSuccess(isBanned ? 'User banned' : 'User unbanned'),
-    onError: (error) => showError(extractErrorMessage(error, 'Failed to update ban status')),
+    onSuccess: () => showSuccess(isBanned ? t('admin.userBanned') : t('admin.userUnbanned')),
+    onError: (error) => showError(extractErrorMessage(error, t('admin.failedUpdateBan'))),
   })
 
   const subscriptionMutation = useMutation({
@@ -495,15 +496,15 @@ export default function UserManagementModal({
         notes,
       })
     },
-    onSuccess: () => showSuccess('Subscription updated successfully'),
-    onError: (error) => showError(extractErrorMessage(error, 'Failed to update subscription')),
+    onSuccess: () => showSuccess(t('admin.subscriptionUpdated')),
+    onError: (error) => showError(extractErrorMessage(error, t('admin.failedUpdateSubscription'))),
   })
 
   const deleteDeviceMutation = useMutation({
     mutationFn: (deviceId: string) =>
       httpBrowserClient.delete(ApiEndpoints.admin.deleteDevice(deviceId)),
-    onSuccess: () => { showSuccess('Device deleted'); refetchDevices() },
-    onError: (error) => showError(extractErrorMessage(error, 'Failed to delete device')),
+    onSuccess: () => { showSuccess(t('admin.deviceDeleted')); refetchDevices() },
+    onError: (error) => showError(extractErrorMessage(error, t('admin.failedDeleteDevice'))),
   })
 
   const saveDeviceMutation = useMutation({
@@ -515,31 +516,31 @@ export default function UserManagementModal({
       return httpBrowserClient.post(ApiEndpoints.admin.createUserDevice(user._id), payload)
     },
     onSuccess: () => {
-      showSuccess(deviceForm.id ? 'Device updated' : 'Device added')
+      showSuccess(deviceForm.id ? t('admin.deviceUpdated') : t('admin.deviceAdded'))
       setDeviceForm(emptyDeviceForm)
       refetchDevices()
     },
-    onError: (error) => showError(extractErrorMessage(error, 'Failed to save device')),
+    onError: (error) => showError(extractErrorMessage(error, t('admin.failedSaveDevice'))),
   })
 
   const cancelMessageMutation = useMutation({
     mutationFn: (messageId: string) =>
       httpBrowserClient.patch(ApiEndpoints.admin.cancelMessage(messageId)),
     onSuccess: () => {
-      showSuccess('Message cancelled')
+      showSuccess(t('admin.messageCancelled'))
       refetchMessages()
     },
-    onError: (error) => showError(extractErrorMessage(error, 'Failed to cancel message')),
+    onError: (error) => showError(extractErrorMessage(error, t('admin.failedCancelMessage'))),
   })
 
   const deleteMessageMutation = useMutation({
     mutationFn: (messageId: string) =>
       httpBrowserClient.delete(ApiEndpoints.admin.deleteMessage(messageId)),
     onSuccess: () => {
-      showSuccess('Message deleted')
+      showSuccess(t('admin.messageDeleted'))
       refetchMessages()
     },
-    onError: (error) => showError(extractErrorMessage(error, 'Failed to delete message')),
+    onError: (error) => showError(extractErrorMessage(error, t('admin.failedDeleteMessage'))),
   })
 
   const showSuccess = (msg: string) => { setSuccessMsg(msg); setErrorMsg(''); setTimeout(() => setSuccessMsg(''), 3000) }
@@ -555,11 +556,11 @@ export default function UserManagementModal({
   const handleSaveAll = async () => {
     setErrorMsg('')
     if (!planExists) {
-      showError(`Plan "${planName}" is not available. Add it in billing plans first.`)
+      showError(t('admin.planUnavailable', { plan: planName }))
       return
     }
     if (isCustomDateMissing) {
-      showError('Choose a custom subscription expiry date before saving.')
+      showError(t('admin.chooseCustomDate'))
       return
     }
     try {
@@ -576,17 +577,17 @@ export default function UserManagementModal({
     const status = message.status?.toLowerCase()
     const warning =
       status === 'received_by_device'
-        ? 'This message is already on the phone queue. The Android app will check cancellation before sending, but it may already be in progress. Continue?'
+        ? t('admin.cancelQueuedMessageWarning')
         : status === 'dispatched'
-        ? 'This message was already dispatched to the device. Cancellation will be recorded, but device-side delivery may already be in progress. Continue?'
-        : 'Cancel this pending message?'
+        ? t('admin.cancelDispatchedMessageWarning')
+        : t('admin.cancelPendingMessageConfirm')
 
     if (!confirm(warning)) return
     cancelMessageMutation.mutate(message._id)
   }
 
   const handleDeleteMessage = (message: AdminMessage) => {
-    if (!confirm('Delete this message from the admin history? This will hide it from the dashboard.')) return
+    if (!confirm(t('admin.deleteMessageConfirm'))) return
     deleteMessageMutation.mutate(message._id)
   }
 
@@ -597,11 +598,11 @@ export default function UserManagementModal({
     saveDeviceMutation.isPending ||
     (!deviceForm.name.trim() && !deviceForm.model.trim())
   const detailTabs: Array<{ key: UserDetailTab; label: string; icon: React.ReactNode }> = [
-    { key: 'overview', label: 'Overview', icon: <MessageSquareText className='h-4 w-4' /> },
-    { key: 'subscription', label: 'Subscription', icon: <Crown className='h-4 w-4' /> },
-    { key: 'devices', label: 'Devices', icon: <Smartphone className='h-4 w-4' /> },
-    { key: 'messages', label: 'Messages', icon: <ArrowUpRight className='h-4 w-4' /> },
-    { key: 'admin', label: 'Admin Actions', icon: <ShieldCheck className='h-4 w-4' /> },
+    { key: 'overview', label: t('admin.overview'), icon: <MessageSquareText className='h-4 w-4' /> },
+    { key: 'subscription', label: t('account.currentSubscription'), icon: <Crown className='h-4 w-4' /> },
+    { key: 'devices', label: t('admin.devices'), icon: <Smartphone className='h-4 w-4' /> },
+    { key: 'messages', label: t('admin.messages'), icon: <ArrowUpRight className='h-4 w-4' /> },
+    { key: 'admin', label: t('admin.adminActions'), icon: <ShieldCheck className='h-4 w-4' /> },
   ]
   const showAccountSave = activeDetailTab === 'subscription' || activeDetailTab === 'admin'
 
@@ -615,7 +616,7 @@ export default function UserManagementModal({
               {(user.name || user.email)?.[0]?.toUpperCase() ?? '?'}
             </div>
             <div>
-              <h2 className='font-bold text-gray-900 dark:text-white text-base leading-tight'>{user.name || 'No Name'}</h2>
+              <h2 className='font-bold text-gray-900 dark:text-white text-base leading-tight'>{user.name || t('admin.noName')}</h2>
               <p className='text-xs text-gray-400'>{user.email}</p>
             </div>
           </div>
@@ -664,45 +665,45 @@ export default function UserManagementModal({
             <section className='space-y-4'>
               <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
                 <div className='rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/40'>
-                  <p className='text-xs font-semibold uppercase text-gray-500'>Role</p>
-                  <p className='mt-2 text-lg font-bold text-gray-900 dark:text-white'>{role === 'ADMIN' ? 'Admin' : 'Regular'}</p>
+                  <p className='text-xs font-semibold uppercase text-gray-500'>{t('admin.role')}</p>
+                  <p className='mt-2 text-lg font-bold text-gray-900 dark:text-white'>{role === 'ADMIN' ? t('common.adminRole') : t('common.regular')}</p>
                 </div>
                 <div className='rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/40'>
-                  <p className='text-xs font-semibold uppercase text-gray-500'>Status</p>
+                  <p className='text-xs font-semibold uppercase text-gray-500'>{t('common.status')}</p>
                   <p className={`mt-2 text-lg font-bold ${isBanned ? 'text-red-600 dark:text-red-300' : 'text-green-600 dark:text-green-300'}`}>
-                    {isBanned ? 'Banned' : 'Active'}
+                    {isBanned ? t('common.banned') : t('common.active')}
                   </p>
                 </div>
                 <div className='rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/40'>
-                  <p className='text-xs font-semibold uppercase text-gray-500'>Devices</p>
+                  <p className='text-xs font-semibold uppercase text-gray-500'>{t('admin.devices')}</p>
                   <p className='mt-2 text-lg font-bold text-gray-900 dark:text-white'>{devices?.length ?? user.devicesCount}</p>
                 </div>
                 <div className='rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/40'>
-                  <p className='text-xs font-semibold uppercase text-gray-500'>Messages</p>
+                  <p className='text-xs font-semibold uppercase text-gray-500'>{t('admin.messages')}</p>
                   <p className='mt-2 text-lg font-bold text-gray-900 dark:text-white'>{messagesMeta.total}</p>
                 </div>
               </div>
 
               <div className='rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800'>
-                <h3 className='text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300'>Account Summary</h3>
+                <h3 className='text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300'>{t('admin.accountSummary')}</h3>
                 <div className='mt-4 grid gap-3 text-sm sm:grid-cols-2'>
                   <div>
-                    <p className='text-xs text-gray-500'>Email</p>
+                    <p className='text-xs text-gray-500'>{t('common.email')}</p>
                     <p className='break-all font-medium text-gray-900 dark:text-white'>{user.email}</p>
                   </div>
                   <div>
-                    <p className='text-xs text-gray-500'>Joined</p>
+                    <p className='text-xs text-gray-500'>{t('admin.joined')}</p>
                     <p className='font-medium text-gray-900 dark:text-white'>
                       {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
                     </p>
                   </div>
                   <div>
-                    <p className='text-xs text-gray-500'>Current plan</p>
+                    <p className='text-xs text-gray-500'>{t('admin.currentPlan')}</p>
                     <p className='font-medium capitalize text-gray-900 dark:text-white'>{planName}</p>
                   </div>
                   <div>
-                    <p className='text-xs text-gray-500'>Email verification</p>
-                    <p className='font-medium text-gray-900 dark:text-white'>{user.emailVerifiedAt ? 'Verified' : 'Unverified'}</p>
+                    <p className='text-xs text-gray-500'>{t('admin.emailVerification')}</p>
+                    <p className='font-medium text-gray-900 dark:text-white'>{user.emailVerifiedAt ? t('account.verified') : t('common.unverified')}</p>
                   </div>
                 </div>
               </div>
@@ -711,12 +712,12 @@ export default function UserManagementModal({
 
           {activeDetailTab === 'admin' && <section className='space-y-3'>
             <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-b border-gray-100 dark:border-gray-700 pb-2'>
-              Role & Status
+              {t('admin.roleStatus')}
             </h3>
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
               {/* Role */}
               <div className='space-y-1.5'>
-                <label className='text-xs font-medium text-gray-600 dark:text-gray-400'>User Role</label>
+                <label className='text-xs font-medium text-gray-600 dark:text-gray-400'>{t('admin.userRole')}</label>
                 <div className='flex rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600'>
                   {['REGULAR', 'ADMIN'].map((r) => (
                     <button
@@ -731,7 +732,7 @@ export default function UserManagementModal({
                       }`}
                     >
                       {r === 'ADMIN' ? <ShieldCheck className='h-4 w-4' /> : <ShieldX className='h-4 w-4' />}
-                      {r === 'ADMIN' ? 'Admin' : 'Regular'}
+                      {r === 'ADMIN' ? t('common.adminRole') : t('common.regular')}
                     </button>
                   ))}
                 </div>
@@ -739,7 +740,7 @@ export default function UserManagementModal({
 
               {/* Ban Status */}
               <div className='space-y-1.5'>
-                <label className='text-xs font-medium text-gray-600 dark:text-gray-400'>Account Status</label>
+                <label className='text-xs font-medium text-gray-600 dark:text-gray-400'>{t('admin.accountStatus')}</label>
                 <div className='flex rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600'>
                   <button
                     onClick={() => setIsBanned(false)}
@@ -749,7 +750,7 @@ export default function UserManagementModal({
                         : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
                     }`}
                   >
-                    ✅ Active
+                    {t('common.active')}
                   </button>
                   <button
                     onClick={() => setIsBanned(true)}
@@ -759,7 +760,7 @@ export default function UserManagementModal({
                         : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
                     }`}
                   >
-                    🚫 Banned
+                    {t('common.banned')}
                   </button>
                 </div>
               </div>
@@ -769,12 +770,12 @@ export default function UserManagementModal({
           {/* ── Section 2: Subscription Override ────────────────────── */}
           {activeDetailTab === 'subscription' && <section className='space-y-3'>
             <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-b border-gray-100 dark:border-gray-700 pb-2 flex items-center gap-2'>
-              <Crown className='h-4 w-4 text-amber-500' /> Subscription Override
+              <Crown className='h-4 w-4 text-amber-500' /> {t('admin.subscriptionOverride')}
             </h3>
 
             {/* Plan selector */}
             <div className='space-y-1.5'>
-              <label className='text-xs font-medium text-gray-600 dark:text-gray-400'>Plan</label>
+              <label className='text-xs font-medium text-gray-600 dark:text-gray-400'>{t('admin.plan')}</label>
               <div className='flex gap-2 flex-wrap'>
                 {(hasAvailablePlans ? plans.map((plan) => plan.name) : [planName]).map((p) => (
                   <button
@@ -792,32 +793,32 @@ export default function UserManagementModal({
               </div>
               {plansLoading && (
                 <p className='text-xs text-gray-500 dark:text-gray-400'>
-                  Loading billing plans...
+                  {t('admin.loadingBillingPlans')}
                 </p>
               )}
               {!plansLoading && !hasAvailablePlans && (
                 <p className='text-xs text-amber-600 dark:text-amber-400'>
-                  No billing plans were returned by the API. Check the plans collection before overriding subscriptions.
+                  {t('admin.noBillingPlans')}
                 </p>
               )}
               {!plansLoading && hasAvailablePlans && !planExists && (
                 <p className='text-xs text-red-600 dark:text-red-400'>
-                  The current plan is not available in billing plans. Add it before saving changes.
+                  {t('admin.currentPlanUnavailable')}
                 </p>
               )}
               {selectedPlan && (
                 <div className='grid grid-cols-3 gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs dark:border-gray-700 dark:bg-gray-700/40'>
                   <div>
-                    <p className='text-gray-400'>Daily</p>
-                    <p className='font-semibold text-gray-700 dark:text-gray-200'>{formatLimit(selectedPlan.dailyLimit)}</p>
+                    <p className='text-gray-400'>{t('account.daily')}</p>
+                    <p className='font-semibold text-gray-700 dark:text-gray-200'>{formatLimit(selectedPlan.dailyLimit, t('account.unlimited'))}</p>
                   </div>
                   <div>
-                    <p className='text-gray-400'>Monthly</p>
-                    <p className='font-semibold text-gray-700 dark:text-gray-200'>{formatLimit(selectedPlan.monthlyLimit)}</p>
+                    <p className='text-gray-400'>{t('account.monthlyLimit')}</p>
+                    <p className='font-semibold text-gray-700 dark:text-gray-200'>{formatLimit(selectedPlan.monthlyLimit, t('account.unlimited'))}</p>
                   </div>
                   <div>
-                    <p className='text-gray-400'>Bulk</p>
-                    <p className='font-semibold text-gray-700 dark:text-gray-200'>{formatLimit(selectedPlan.bulkSendLimit)}</p>
+                    <p className='text-gray-400'>{t('account.bulk')}</p>
+                    <p className='font-semibold text-gray-700 dark:text-gray-200'>{formatLimit(selectedPlan.bulkSendLimit, t('account.unlimited'))}</p>
                   </div>
                 </div>
               )}
@@ -826,7 +827,7 @@ export default function UserManagementModal({
             {/* Expiry */}
             <div className='space-y-1.5'>
               <label className='text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1'>
-                <CalendarDays className='h-3.5 w-3.5' /> Subscription Duration
+                <CalendarDays className='h-3.5 w-3.5' /> {t('admin.subscriptionDuration')}
               </label>
               <div className='flex flex-wrap gap-2'>
                 {EXPIRY_PRESETS.map((preset) => (
@@ -839,7 +840,7 @@ export default function UserManagementModal({
                         : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
                     }`}
                   >
-                    {preset.label}
+                    {t(`admin.expiry${preset.value}` as any)}
                   </button>
                 ))}
               </div>
@@ -853,16 +854,16 @@ export default function UserManagementModal({
                 />
               )}
               {isCustomDateMissing && (
-                <p className='text-xs text-red-600 dark:text-red-400'>Choose a date to use the custom duration.</p>
+                <p className='text-xs text-red-600 dark:text-red-400'>{t('admin.chooseCustomDate')}</p>
               )}
             </div>
 
             {/* Custom Limits */}
             <div className='grid grid-cols-3 gap-3'>
               {[
-                { label: 'Daily SMS Limit', value: customDailyLimit, setter: setCustomDailyLimit },
-                { label: 'Monthly SMS Limit', value: customMonthlyLimit, setter: setCustomMonthlyLimit },
-                { label: 'Bulk Send Limit', value: customBulkSendLimit, setter: setCustomBulkSendLimit },
+                { label: t('admin.dailySmsLimit'), value: customDailyLimit, setter: setCustomDailyLimit },
+                { label: t('admin.monthlySmsLimit'), value: customMonthlyLimit, setter: setCustomMonthlyLimit },
+                { label: t('admin.bulkSendLimit'), value: customBulkSendLimit, setter: setCustomBulkSendLimit },
               ].map(({ label, value, setter }) => (
                 <div key={label} className='space-y-1.5'>
                   <label className='text-xs font-medium text-gray-600 dark:text-gray-400'>{label}</label>
@@ -870,7 +871,7 @@ export default function UserManagementModal({
                     type='number'
                     value={value}
                     onChange={(e) => setter(e.target.value)}
-                    placeholder='-1 = unlimited'
+                    placeholder={t('admin.unlimitedPlaceholder')}
                     className='w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500'
                   />
                 </div>
@@ -879,12 +880,12 @@ export default function UserManagementModal({
 
             {/* Notes */}
             <div className='space-y-1.5'>
-              <label className='text-xs font-medium text-gray-600 dark:text-gray-400'>Admin Notes (optional)</label>
+              <label className='text-xs font-medium text-gray-600 dark:text-gray-400'>{t('admin.adminNotesOptional')}</label>
               <textarea
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder='e.g. Paid via bank transfer, trial extension for 1 month...'
+                placeholder={t('admin.adminNotesPlaceholder')}
                 className='w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none'
               />
             </div>
@@ -893,32 +894,32 @@ export default function UserManagementModal({
           {/* ── Section 3: Devices ───────────────────────────────────── */}
           {activeDetailTab === 'devices' && <section className='space-y-3'>
             <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide border-b border-gray-100 dark:border-gray-700 pb-2 flex items-center gap-2'>
-              <Smartphone className='h-4 w-4 text-blue-500' /> Devices ({devices?.length ?? 0})
+              <Smartphone className='h-4 w-4 text-blue-500' /> {t('admin.devices')} ({devices?.length ?? 0})
             </h3>
             <div className='rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700/40'>
               <div className='mb-3 flex items-center justify-between'>
                 <p className='text-sm font-semibold text-gray-800 dark:text-gray-100'>
-                  {deviceForm.id ? 'Edit Device' : 'Add Device'}
+                  {deviceForm.id ? t('admin.editDevice') : t('admin.addDevice')}
                 </p>
                 {deviceForm.id && (
                   <button
                     onClick={() => setDeviceForm(emptyDeviceForm)}
                     className='text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
                   >
-                    Add new
+                    {t('admin.addNew')}
                   </button>
                 )}
               </div>
               <div className='grid grid-cols-1 gap-2 sm:grid-cols-2'>
                 {[
-                  ['name', 'Device name'],
-                  ['brand', 'Brand'],
-                  ['model', 'Model'],
+                  ['name', t('admin.deviceName')],
+                  ['brand', t('admin.brand')],
+                  ['model', t('admin.model')],
                   ['os', 'OS'],
-                  ['osVersion', 'OS version'],
-                  ['appVersionName', 'App version'],
-                  ['appVersionCode', 'Version code'],
-                  ['smsSendDelaySeconds', 'Send delay seconds'],
+                  ['osVersion', t('admin.osVersion')],
+                  ['appVersionName', t('admin.appVersion')],
+                  ['appVersionCode', t('admin.versionCode')],
+                  ['smsSendDelaySeconds', t('admin.sendDelaySeconds')],
                 ].map(([field, placeholder]) => (
                   <input
                     key={field}
@@ -934,7 +935,7 @@ export default function UserManagementModal({
                 rows={2}
                 value={deviceForm.fcmToken}
                 onChange={(e) => setDeviceForm((current) => ({ ...current, fcmToken: e.target.value }))}
-                placeholder='FCM token'
+                placeholder={t('admin.fcmToken')}
                 className='mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white'
               />
               <div className='mt-3 flex flex-wrap items-center justify-between gap-3'>
@@ -946,7 +947,7 @@ export default function UserManagementModal({
                       onChange={(e) => setDeviceForm((current) => ({ ...current, enabled: e.target.checked }))}
                       className='h-4 w-4 rounded border-gray-300 text-blue-600'
                     />
-                    Enabled
+                    {t('devices.enabled')}
                   </label>
                   <label className='flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300'>
                     <input
@@ -955,7 +956,7 @@ export default function UserManagementModal({
                       onChange={(e) => setDeviceForm((current) => ({ ...current, receiveSMSEnabled: e.target.checked }))}
                       className='h-4 w-4 rounded border-gray-300 text-blue-600'
                     />
-                    Receive SMS
+                    {t('admin.receiveSms')}
                   </label>
                 </div>
                 <button
@@ -963,7 +964,7 @@ export default function UserManagementModal({
                   disabled={deviceSaveDisabled}
                   className='rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60'
                 >
-                  {saveDeviceMutation.isPending ? 'Saving...' : deviceForm.id ? 'Save Device' : 'Add Device'}
+                  {saveDeviceMutation.isPending ? t('admin.saving') : deviceForm.id ? t('admin.saveDevice') : t('admin.addDevice')}
                 </button>
               </div>
             </div>
@@ -972,7 +973,7 @@ export default function UserManagementModal({
                 <Loader2 className='h-6 w-6 animate-spin text-gray-400' />
               </div>
             ) : !devices || devices.length === 0 ? (
-              <p className='text-sm text-gray-400 text-center py-4'>No devices registered</p>
+              <p className='text-sm text-gray-400 text-center py-4'>{t('admin.noDevicesRegistered')}</p>
             ) : (
               <div className='space-y-2 max-h-48 overflow-y-auto pr-1'>
                 {devices.map((device) => (
@@ -990,7 +991,7 @@ export default function UserManagementModal({
           {activeDetailTab === 'messages' && <section className='space-y-3'>
             <div className='flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-2 dark:border-gray-700'>
               <h3 className='flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300'>
-                <MessageSquareText className='h-4 w-4 text-emerald-500' /> SMS History ({messagesMeta.total})
+                <MessageSquareText className='h-4 w-4 text-emerald-500' /> {t('admin.smsHistory')} ({messagesMeta.total})
               </h3>
               <div className='flex flex-wrap items-center gap-2'>
                 {(['all', 'sent', 'received'] as const).map((type) => (
@@ -1006,7 +1007,7 @@ export default function UserManagementModal({
                         : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                     }`}
                   >
-                    {type}
+                    {type === 'all' ? t('sms.allMessages') : type === 'sent' ? t('sms.sent') : t('sms.received')}
                   </button>
                 ))}
                 <select
@@ -1053,13 +1054,13 @@ export default function UserManagementModal({
                 <table className='w-full min-w-[900px] text-sm'>
                   <thead className='bg-gray-50 dark:bg-gray-700/40'>
                     <tr>
-                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Message status</th>
-                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Date</th>
-                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Waiting</th>
-                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Number</th>
-                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Message</th>
-                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Delivery status</th>
-                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>Actions</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('admin.messageStatus')}</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('sms.dateTime')}</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('admin.waiting')}</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('sms.number')}</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('sms.message')}</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('admin.deliveryStatus')}</th>
+                      <th className='px-3 py-2 text-left text-xs font-semibold uppercase text-gray-500'>{t('admin.actions')}</th>
                     </tr>
                   </thead>
                   <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
@@ -1074,7 +1075,7 @@ export default function UserManagementModal({
                                 : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                             }`}>
                               {isReceived ? <ArrowDownLeft className='h-3 w-3' /> : <ArrowUpRight className='h-3 w-3' />}
-                              {isReceived ? 'Received' : 'Sent'}
+                              {isReceived ? t('sms.received') : t('sms.sent')}
                             </span>
                           </td>
                           <td className='px-3 py-3 text-xs text-gray-500 dark:text-gray-400'>
@@ -1114,7 +1115,7 @@ export default function UserManagementModal({
                                   disabled={cancelMessageMutation.isPending}
                                   className='rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40'
                                 >
-                                  Cancel
+                                  {t('common.cancel')}
                                 </button>
                               )}
                               <button
@@ -1123,7 +1124,7 @@ export default function UserManagementModal({
                                 className='inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40'
                               >
                                 <Trash2 className='h-3 w-3' />
-                                Delete
+                                {t('common.delete')}
                               </button>
                             </div>
                           </td>
@@ -1138,7 +1139,7 @@ export default function UserManagementModal({
             {messagesMeta.totalPages > 1 && (
               <div className='flex items-center justify-between gap-3'>
                 <p className='text-xs text-gray-500 dark:text-gray-400'>
-                  Page {messagesMeta.page} of {messagesMeta.totalPages}
+                  {t('admin.pageOf', { page: messagesMeta.page, totalPages: messagesMeta.totalPages })}
                 </p>
                 <div className='flex items-center gap-2'>
                   <button
@@ -1146,14 +1147,14 @@ export default function UserManagementModal({
                     disabled={messagePage === 1}
                     className='rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
                   >
-                    Prev
+                    {t('admin.prev')}
                   </button>
                   <button
                     onClick={() => setMessagePage((current) => Math.min(messagesMeta.totalPages, current + 1))}
                     disabled={messagePage >= messagesMeta.totalPages}
                     className='rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
                   >
-                    Next
+                    {t('admin.next')}
                   </button>
                 </div>
               </div>
@@ -1167,7 +1168,7 @@ export default function UserManagementModal({
             onClick={onClose}
             className='rounded-lg border border-gray-200 dark:border-gray-600 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors'
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           {showAccountSave && (
             <button
@@ -1176,7 +1177,7 @@ export default function UserManagementModal({
               className='flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-md'
             >
               {isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
-              Save Account Changes
+              {t('admin.saveAccountChanges')}
             </button>
           )}
         </div>
