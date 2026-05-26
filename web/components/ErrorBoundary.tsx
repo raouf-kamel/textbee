@@ -1,4 +1,6 @@
 import React, { Component } from 'react'
+import { ar } from '@/lib/locales/ar'
+import { en } from '@/lib/locales/en'
 
 interface ErrorBoundaryProps {
   fallback?: string | React.ReactNode
@@ -26,7 +28,15 @@ export default class ErrorBoundary extends Component<
 
   render() {
     if (this.state.hasError) {
-      return this.props.fallback || 'Something went wrong'
+      const locale =
+        typeof document !== 'undefined' && document.documentElement.lang === 'ar'
+          ? 'ar'
+          : 'en'
+
+      return (
+        this.props.fallback ||
+        (locale === 'ar' ? ar.auth.somethingWentWrong : en.auth.somethingWentWrong)
+      )
     }
 
     return this.props.children

@@ -28,6 +28,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import GenerateApiKey from './generate-api-key'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TranslationKey, useI18n } from '@/lib/i18n'
 
 type StatsShape = {
   totalApiKeyCount?: number
@@ -49,8 +50,8 @@ type SubShape = { plan?: { name?: string } } | null
 
 type StepDef = {
   id: string
-  label: string
-  description: string
+  labelKey: TranslationKey
+  descriptionKey: TranslationKey
   optional: boolean
   checkDone: (
     user: UserShape | undefined,
@@ -63,37 +64,37 @@ type StepDef = {
 const STEPS: StepDef[] = [
   {
     id: 'verify_email',
-    label: 'Verify your email',
-    description: 'Required before you can send SMS.',
+    labelKey: 'onboarding.verifyEmail',
+    descriptionKey: 'onboarding.verifyEmailDescription',
     optional: false,
     checkDone: (user) => !!user?.emailVerifiedAt,
   },
   {
     id: 'download_app',
-    label: 'Download the Android app',
-    description: 'Install TextBee on your Android device.',
+    labelKey: 'onboarding.downloadApp',
+    descriptionKey: 'onboarding.downloadAppDescription',
     optional: true,
     checkDone: (_u, stats, _s, skipped) =>
       (stats?.totalDeviceCount ?? 0) > 0 || skipped.includes('download_app'),
   },
   {
     id: 'api_key',
-    label: 'Generate an API key',
-    description: 'Used to connect your device or authenticate API calls.',
+    labelKey: 'onboarding.generateApiKey',
+    descriptionKey: 'onboarding.generateApiKeyDescription',
     optional: false,
     checkDone: (_u, stats) => (stats?.totalApiKeyCount ?? 0) > 0,
   },
   {
     id: 'register_device',
-    label: 'Register your device',
-    description: 'Link your phone to your account by scanning a QR code.',
+    labelKey: 'onboarding.registerDevice',
+    descriptionKey: 'onboarding.registerDeviceDescription',
     optional: false,
     checkDone: (_u, stats) => (stats?.totalDeviceCount ?? 0) > 0,
   },
   {
     id: 'choose_plan',
-    label: 'Choose your plan',
-    description: 'Pick the plan that fits your usage.',
+    labelKey: 'onboarding.choosePlan',
+    descriptionKey: 'onboarding.choosePlanDescription',
     optional: true,
     checkDone: (_u, _stats, sub, skipped) =>
       (sub?.plan?.name && sub.plan.name.toLowerCase() !== 'free') ||
@@ -101,8 +102,8 @@ const STEPS: StepDef[] = [
   },
   {
     id: 'first_message',
-    label: 'Send your first message',
-    description: 'Send your first message from the dashboard.',
+    labelKey: 'onboarding.firstMessage',
+    descriptionKey: 'onboarding.firstMessageDescription',
     optional: false,
     checkDone: (_u, stats) => (stats?.totalSentSMSCount ?? 0) > 0,
   },
@@ -152,6 +153,7 @@ function GetStartedCardSkeleton() {
 }
 
 export default function GetStartedCard() {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const autoCompletedRef = useRef(false)
   const legacyAutoCompletedRef = useRef(false)
@@ -340,9 +342,12 @@ export default function GetStartedCard() {
                 <Lightbulb className='h-4 w-4 text-primary' />
               </div>
               <div>
-                <CardTitle className='text-lg'>Get Started</CardTitle>
+                <CardTitle className='text-lg'>{t('common.getStarted')}</CardTitle>
                 <CardDescription className='mt-1'>
-                  {doneCount} of {STEPS.length} steps complete.
+                  {t('onboarding.stepsComplete', {
+                    done: doneCount,
+                    total: STEPS.length,
+                  })}
                 </CardDescription>
               </div>
             </div>
@@ -409,7 +414,7 @@ export default function GetStartedCard() {
                             updateOnboarding({ currentStepId: step.id })
                           }}
                         >
-                          {step.label}
+                          {t(step.labelKey)}
                         </button>
                       ) : (
                         <p
@@ -420,7 +425,7 @@ export default function GetStartedCard() {
                               : 'text-muted-foreground',
                           )}
                         >
-                          {step.label}
+                          {t(step.labelKey)}
                         </p>
                       )}
                       {/* {step.optional && (
@@ -432,12 +437,14 @@ export default function GetStartedCard() {
                     {isActive && (
                       <>
                         <p className='mt-1 text-sm text-muted-foreground'>
-                          {step.description}
+                          {t(step.descriptionKey)}
                         </p>
                         <div className='mt-3 flex flex-wrap items-center gap-2'>
                           {step.id === 'verify_email' && (
                             <Button size='sm' asChild>
-                              <Link href={Routes.verifyEmail}>Verify email</Link>
+                              <Link href={Routes.verifyEmail}>
+                                {t('onboarding.verifyEmailAction')}
+                              </Link>
                             </Button>
                           )}
                           {step.id === 'download_app' && (
@@ -450,7 +457,7 @@ export default function GetStartedCard() {
                                 }
                               >
                                 <Download className='h-4 w-4' />
-                                Download APK
+                                {t('onboarding.downloadApk')}
                               </Button>
                               <Button
                                 variant='link'
@@ -461,7 +468,7 @@ export default function GetStartedCard() {
                                   updateOnboarding({ skipStepId: 'download_app' })
                                 }
                               >
-                                Skip →
+                                {t('onboarding.skip')}
                               </Button>
                             </>
                           )}
@@ -472,7 +479,7 @@ export default function GetStartedCard() {
                               size='sm'
                               onClick={() => setRegisterHelpOpen(true)}
                             >
-                              How to register
+                              {t('onboarding.howToRegister')}
                             </Button>
                           )}
                           {step.id === 'choose_plan' && (
@@ -486,17 +493,19 @@ export default function GetStartedCard() {
                                 <div className='grid w-full gap-3 md:grid-cols-2'>
                                   <Card className='border-border shadow-none'>
                                     <CardHeader className='pb-2 pt-4'>
-                                      <CardTitle className='text-base'>Free</CardTitle>
+                                      <CardTitle className='text-base'>
+                                        {t('account.free')}
+                                      </CardTitle>
                                       <CardDescription>$0/month</CardDescription>
                                     </CardHeader>
                                     <CardContent className='space-y-2 pb-4 text-sm text-muted-foreground'>
                                       <p className='flex gap-2'>
                                         <Check className='mt-0.5 h-4 w-4 shrink-0 text-muted-foreground' />
-                                        1 device
+                                        {t('onboarding.oneDevice')}
                                       </p>
                                       <p className='flex gap-2'>
                                         <Check className='mt-0.5 h-4 w-4 shrink-0 text-muted-foreground' />
-                                        50 SMS / day, 300 / month
+                                        {t('onboarding.freeLimits')}
                                       </p>
                                     </CardContent>
                                     <CardFooter className='flex-col gap-2 pb-4 pt-0'>
@@ -508,13 +517,13 @@ export default function GetStartedCard() {
                                           updateOnboarding({ skipStepId: 'choose_plan' })
                                         }
                                       >
-                                        Continue with Free
+                                        {t('onboarding.continueWithFree')}
                                       </Button>
                                     </CardFooter>
                                   </Card>
                                   <Card className='relative border-2 border-primary shadow-md'>
                                     <Badge className='absolute right-3 top-3 text-[10px]'>
-                                      Recommended
+                                      {t('onboarding.recommended')}
                                     </Badge>
                                     <CardHeader className='pb-2 pt-4 pr-14'>
                                       <CardTitle className='text-base'>Pro</CardTitle>
@@ -523,24 +532,26 @@ export default function GetStartedCard() {
                                     <CardContent className='space-y-2 pb-4 text-sm'>
                                       <p className='flex gap-2 text-foreground'>
                                         <Check className='mt-0.5 h-4 w-4 shrink-0 text-primary' />
-                                        Up to 5 devices
+                                        {t('onboarding.upToFiveDevices')}
                                       </p>
                                       <p className='flex gap-2 text-foreground'>
                                         <Check className='mt-0.5 h-4 w-4 shrink-0 text-primary' />
-                                        No daily limit
+                                        {t('onboarding.noDailyLimit')}
                                       </p>
                                       <p className='flex gap-2 text-foreground'>
                                         <Check className='mt-0.5 h-4 w-4 shrink-0 text-primary' />
-                                        5,000 SMS / month
+                                        {t('onboarding.proMonthlyLimit')}
                                       </p>
                                       <p className='flex gap-2 text-foreground'>
                                         <Check className='mt-0.5 h-4 w-4 shrink-0 text-primary' />
-                                        Priority support
+                                        {t('onboarding.prioritySupport')}
                                       </p>
                                     </CardContent>
                                     <CardFooter className='flex-col gap-2 pb-4 pt-0'>
                                       <Button className='w-full' size='sm' asChild>
-                                        <Link href='/checkout/pro'>Upgrade to Pro</Link>
+                                        <Link href='/checkout/pro'>
+                                          {t('account.upgradeToPro')}
+                                        </Link>
                                       </Button>
                                       <Button
                                         variant='link'
@@ -553,7 +564,7 @@ export default function GetStartedCard() {
                                           target='_blank'
                                           rel='noreferrer'
                                         >
-                                          Compare all plans
+                                          {t('onboarding.comparePlans')}
                                           <ExternalLink className='ml-1 h-3 w-3' />
                                         </a>
                                       </Button>
@@ -570,13 +581,15 @@ export default function GetStartedCard() {
                                   updateOnboarding({ skipStepId: 'choose_plan' })
                                 }
                               >
-                                Skip for now →
+                                {t('onboarding.skipForNow')}
                               </Button>
                             </>
                           )}
                           {step.id === 'first_message' && (
                             <Button size='sm' asChild>
-                              <Link href='/dashboard/messaging'>Go to messaging</Link>
+                              <Link href='/dashboard/messaging'>
+                                {t('onboarding.goToMessaging')}
+                              </Link>
                             </Button>
                           )}
                         </div>
@@ -595,7 +608,7 @@ export default function GetStartedCard() {
             disabled={savingOnboarding}
             onClick={finishSetup}
           >
-            Finish setup
+            {t('onboarding.finishSetup')}
           </Button>
         </CardFooter>
       </Card>
@@ -603,17 +616,17 @@ export default function GetStartedCard() {
       <Dialog open={registerHelpOpen} onOpenChange={setRegisterHelpOpen}>
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
-            <DialogTitle>Register your device</DialogTitle>
+            <DialogTitle>{t('onboarding.registerDevice')}</DialogTitle>
             <DialogDescription>
-              Follow these steps to link your phone to your account.
+              {t('onboarding.registerHelpDescription')}
             </DialogDescription>
           </DialogHeader>
           <ol className='mt-2 list-decimal space-y-3 pl-5 text-sm text-muted-foreground'>
             <li>
-              Generate an API key in the step above (if you have not already).
+              {t('onboarding.registerHelpStepApiKey')}
             </li>
             <li>
-              Download the TextBee Android app from{' '}
+              {t('onboarding.registerHelpStepDownloadPrefix')}{' '}
               <a
                 href={Routes.downloadAndroidApp}
                 target='_blank'
@@ -624,25 +637,23 @@ export default function GetStartedCard() {
               </a>
               .
             </li>
-            <li>Open the app and grant SMS permissions when prompted.</li>
+            <li>{t('onboarding.registerHelpStepPermissions')}</li>
             <li>
-              In the app, register your device by scanning the QR code shown when you
-              generate an API key, or paste the key manually.
+              {t('onboarding.registerHelpStepRegister')}
             </li>
             <li>
-              Your phone should appear under Registered Devices on this dashboard when
-              the link succeeds.
+              {t('onboarding.registerHelpStepDone')}
             </li>
           </ol>
           <DialogFooter className='flex flex-col gap-2 sm:flex-row sm:justify-between'>
             <Button variant='outline' size='sm' asChild>
               <a href={Routes.quickstart} target='_blank' rel='noreferrer'>
-                View full guide
+                {t('onboarding.viewFullGuide')}
                 <ExternalLink className='ml-1 h-3 w-3' />
               </a>
             </Button>
             <Button size='sm' onClick={() => setRegisterHelpOpen(false)}>
-              Close
+              {t('common.cancel')}
             </Button>
           </DialogFooter>
         </DialogContent>

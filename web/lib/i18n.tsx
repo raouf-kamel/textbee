@@ -21,7 +21,7 @@ const dictionaries = {
 } as const
 
 type Dictionary = typeof en
-type TranslationKey = {
+export type TranslationKey = {
   [K in keyof Dictionary]: `${K}.${Extract<keyof Dictionary[K], string>}`
 }[keyof Dictionary]
 

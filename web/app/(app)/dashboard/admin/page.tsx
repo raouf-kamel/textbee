@@ -22,6 +22,7 @@ import {
   Activity,
 } from 'lucide-react'
 import UserManagementModal from './(components)/user-management-modal'
+import { useI18n } from '@/lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type User = {
@@ -770,6 +771,7 @@ function PlanManagementSection() {
 }
 
 export default function AdminPage() {
+  const { t } = useI18n()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
@@ -833,10 +835,10 @@ export default function AdminPage() {
     setPage(1)
   }
   const tabs: Array<{ key: AdminTab; label: string; icon: React.ReactNode }> = [
-    { key: 'overview', label: 'Overview', icon: <Activity className='h-4 w-4' /> },
-    { key: 'users', label: 'Users', icon: <Users className='h-4 w-4' /> },
-    { key: 'devices', label: 'Devices', icon: <Smartphone className='h-4 w-4' /> },
-    { key: 'billing', label: 'Billing', icon: <Crown className='h-4 w-4' /> },
+    { key: 'overview', label: t('admin.overview'), icon: <Activity className='h-4 w-4' /> },
+    { key: 'users', label: t('admin.users'), icon: <Users className='h-4 w-4' /> },
+    { key: 'devices', label: t('admin.devices'), icon: <Smartphone className='h-4 w-4' /> },
+    { key: 'billing', label: t('admin.billing'), icon: <Crown className='h-4 w-4' /> },
   ]
 
   return (
@@ -844,45 +846,45 @@ export default function AdminPage() {
       {/* Page Title */}
       <div className='flex items-center justify-between'>
         <div>
-          <h1 className='text-2xl font-bold text-gray-900 dark:text-white'>Admin Dashboard</h1>
-          <p className='mt-1 text-sm text-gray-500 dark:text-gray-400'>Manage users, subscriptions, and system health</p>
+          <h1 className='text-2xl font-bold text-gray-900 dark:text-white'>{t('admin.dashboard')}</h1>
+          <p className='mt-1 text-sm text-gray-500 dark:text-gray-400'>{t('admin.description')}</p>
         </div>
         <button
           onClick={refetchAll}
           className='flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm'
         >
           <RefreshCw className='h-4 w-4' />
-          Refresh
+          {t('common.refresh')}
         </button>
       </div>
 
       {/* Stats Cards */}
       <div className='grid grid-cols-2 gap-4 md:grid-cols-4'>
         <StatCard
-          label='Total Users'
+          label={t('admin.totalUsers')}
           value={statsLoading ? '...' : (stats?.totalUsers ?? 0)}
           icon={<Users className='h-5 w-5 text-white' />}
           gradient='bg-gradient-to-br from-blue-500 to-blue-700'
           sub={`${stats?.planCounts?.pro ?? 0} Pro · ${stats?.planCounts?.custom ?? 0} Custom`}
         />
         <StatCard
-          label='Total Devices'
+          label={t('admin.totalDevices')}
           value={statsLoading ? '...' : (stats?.totalDevices ?? 0)}
           icon={<Smartphone className='h-5 w-5 text-white' />}
           gradient='bg-gradient-to-br from-emerald-500 to-emerald-700'
         />
         <StatCard
-          label='Total SMS Sent'
+          label={t('admin.totalSmsSent')}
           value={statsLoading ? '...' : (stats?.totalSMS ?? 0)}
           icon={<MessageSquareText className='h-5 w-5 text-white' />}
           gradient='bg-gradient-to-br from-orange-500 to-rose-600'
         />
         <StatCard
-          label='Active Subscriptions'
+          label={t('admin.activeSubscriptions')}
           value={statsLoading ? '...' : (stats?.activeSubscriptions ?? 0)}
           icon={<Crown className='h-5 w-5 text-white' />}
           gradient='bg-gradient-to-br from-purple-500 to-indigo-700'
-          sub={`${stats?.planCounts?.free ?? 0} Free plans`}
+          sub={t('admin.freePlans', { count: stats?.planCounts?.free ?? 0 })}
         />
       </div>
 
@@ -916,15 +918,17 @@ export default function AdminPage() {
         {/* Table Header */}
         <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-200 dark:border-gray-700 px-5 py-4'>
           <div>
-            <h2 className='text-base font-semibold text-gray-900 dark:text-white'>Users</h2>
-            <p className='text-xs text-gray-500 dark:text-gray-400'>{totalUsers} total users</p>
+            <h2 className='text-base font-semibold text-gray-900 dark:text-white'>{t('admin.users')}</h2>
+            <p className='text-xs text-gray-500 dark:text-gray-400'>
+              {t('admin.totalUsersCount', { count: totalUsers })}
+            </p>
           </div>
           <form onSubmit={handleSearch} className='flex items-center gap-2'>
             <div className='relative'>
               <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400' />
               <input
                 type='text'
-                placeholder='Search name or email...'
+                placeholder={t('admin.searchPlaceholder')}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className='pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 w-56'
@@ -934,7 +938,7 @@ export default function AdminPage() {
               type='submit'
               className='rounded-lg bg-purple-600 hover:bg-purple-700 px-4 py-2 text-sm font-medium text-white transition-colors'
             >
-              Search
+              {t('common.search')}
             </button>
             {search && (
               <button
@@ -942,7 +946,7 @@ export default function AdminPage() {
                 onClick={() => { setSearch(''); setSearchInput(''); setPage(1) }}
                 className='rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors'
               >
-                Clear
+                {t('common.clear')}
               </button>
             )}
           </form>
@@ -951,80 +955,80 @@ export default function AdminPage() {
         <div className='border-b border-gray-200 bg-gray-50 px-5 py-4 dark:border-gray-700 dark:bg-gray-800/50'>
           <div className='grid gap-3 md:grid-cols-3 lg:grid-cols-6'>
             <label className='space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
-              Status
+              {t('admin.status')}
               <select
                 value={userFilters.status}
                 onChange={(e) => updateUserFilter('status', e.target.value)}
                 className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
               >
-                <option value='all'>All statuses</option>
-                <option value='active'>Active</option>
-                <option value='banned'>Banned</option>
-                <option value='unverified'>Unverified</option>
+                <option value='all'>{t('admin.allStatuses')}</option>
+                <option value='active'>{t('common.active')}</option>
+                <option value='banned'>{t('common.banned')}</option>
+                <option value='unverified'>{t('common.unverified')}</option>
               </select>
             </label>
             <label className='space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
-              Role
+              {t('admin.role')}
               <select
                 value={userFilters.role}
                 onChange={(e) => updateUserFilter('role', e.target.value)}
                 className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
               >
-                <option value='all'>All roles</option>
-                <option value='REGULAR'>Regular</option>
-                <option value='ADMIN'>Admin</option>
+                <option value='all'>{t('admin.allRoles')}</option>
+                <option value='REGULAR'>{t('common.regular')}</option>
+                <option value='ADMIN'>{t('common.adminRole')}</option>
               </select>
             </label>
             <label className='space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
-              Plan
+              {t('admin.plan')}
               <select
                 value={userFilters.plan}
                 onChange={(e) => updateUserFilter('plan', e.target.value)}
                 className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
               >
-                <option value='all'>All plans</option>
-                <option value='free'>Free</option>
+                <option value='all'>{t('admin.allPlans')}</option>
+                <option value='free'>{t('account.free')}</option>
                 <option value='pro'>Pro</option>
                 <option value='custom'>Custom</option>
               </select>
             </label>
             <label className='space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
-              Devices
+              {t('admin.devices')}
               <select
                 value={userFilters.hasDevices}
                 onChange={(e) => updateUserFilter('hasDevices', e.target.value)}
                 className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
               >
-                <option value='all'>Any devices</option>
-                <option value='with'>Has devices</option>
-                <option value='without'>No devices</option>
+                <option value='all'>{t('admin.anyDevices')}</option>
+                <option value='with'>{t('admin.hasDevices')}</option>
+                <option value='without'>{t('admin.noDevices')}</option>
               </select>
             </label>
             <label className='space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
-              Sort by
+              {t('admin.sortBy')}
               <select
                 value={userFilters.sortBy}
                 onChange={(e) => updateUserFilter('sortBy', e.target.value)}
                 className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
               >
-                <option value='createdAt'>Joined</option>
-                <option value='smsCount'>Messages</option>
-                <option value='devicesCount'>Devices</option>
-                <option value='plan'>Plan</option>
-                <option value='name'>Name</option>
-                <option value='email'>Email</option>
+                <option value='createdAt'>{t('admin.joined')}</option>
+                <option value='smsCount'>{t('admin.messages')}</option>
+                <option value='devicesCount'>{t('admin.devices')}</option>
+                <option value='plan'>{t('admin.plan')}</option>
+                <option value='name'>{t('account.yourName')}</option>
+                <option value='email'>{t('common.email')}</option>
               </select>
             </label>
             <div className='flex items-end gap-2'>
               <label className='flex-1 space-y-1 text-xs font-medium text-gray-500 dark:text-gray-400'>
-                Direction
+                {t('admin.direction')}
                 <select
                   value={userFilters.sortDir}
                   onChange={(e) => updateUserFilter('sortDir', e.target.value)}
                   className='w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white'
                 >
-                  <option value='desc'>Desc</option>
-                  <option value='asc'>Asc</option>
+                  <option value='desc'>{t('admin.desc')}</option>
+                  <option value='asc'>{t('admin.asc')}</option>
                 </select>
               </label>
               <button
@@ -1032,16 +1036,16 @@ export default function AdminPage() {
                 onClick={resetUserFilters}
                 className='rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
               >
-                Reset
+                {t('admin.reset')}
               </button>
             </div>
           </div>
           <div className='mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
             {[
-              ['Banned', usersSummary.bannedUsers],
-              ['Unverified', usersSummary.unverifiedUsers],
-              ['No Devices', usersSummary.usersWithoutDevices],
-              ['Filtered Messages', usersSummary.totalMessages],
+              [t('common.banned'), usersSummary.bannedUsers],
+              [t('common.unverified'), usersSummary.unverifiedUsers],
+              [t('admin.noDevices'), usersSummary.usersWithoutDevices],
+              [t('admin.filteredMessages'), usersSummary.totalMessages],
             ].map(([label, value]) => (
               <div key={label} className='rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800'>
                 <p className='text-xs font-semibold uppercase text-gray-500'>{label}</p>
@@ -1056,14 +1060,14 @@ export default function AdminPage() {
           <table className='w-full text-sm'>
             <thead>
               <tr className='border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60'>
-                <th className='px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>User</th>
-                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Status</th>
-                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Role</th>
-                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Plan</th>
-                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Devices</th>
-                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Messages</th>
-                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Joined</th>
-                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>Action</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>{t('common.user')}</th>
+                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>{t('admin.status')}</th>
+                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>{t('admin.role')}</th>
+                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>{t('admin.plan')}</th>
+                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>{t('admin.devices')}</th>
+                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>{t('admin.messages')}</th>
+                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>{t('admin.joined')}</th>
+                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>{t('admin.action')}</th>
               </tr>
             </thead>
             <tbody className='divide-y divide-gray-100 dark:divide-gray-700'>
@@ -1080,7 +1084,7 @@ export default function AdminPage() {
               ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={8} className='px-5 py-12 text-center text-gray-400 dark:text-gray-500'>
-                    No users found
+                    {t('admin.noUsersFound')}
                   </td>
                 </tr>
               ) : (
@@ -1132,7 +1136,7 @@ export default function AdminPage() {
                         onClick={(e) => { e.stopPropagation(); setSelectedUser(user) }}
                         className='rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 px-3 py-1 text-xs font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors'
                       >
-                        Manage
+                        {t('admin.manage')}
                       </button>
                     </td>
                   </tr>
@@ -1146,7 +1150,7 @@ export default function AdminPage() {
         {totalPages > 1 && (
           <div className='flex items-center justify-between border-t border-gray-100 dark:border-gray-700 px-5 py-3'>
             <p className='text-xs text-gray-500 dark:text-gray-400'>
-              Page {page} of {totalPages}
+              {t('admin.pageOf', { page, totalPages })}
             </p>
             <div className='flex items-center gap-2'>
               <button
@@ -1154,14 +1158,14 @@ export default function AdminPage() {
                 disabled={page === 1}
                 className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
               >
-                <ChevronLeft className='h-3.5 w-3.5' /> Prev
+                <ChevronLeft className='h-3.5 w-3.5' /> {t('admin.prev')}
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
               >
-                Next <ChevronRight className='h-3.5 w-3.5' />
+                {t('admin.next')} <ChevronRight className='h-3.5 w-3.5' />
               </button>
             </div>
           </div>

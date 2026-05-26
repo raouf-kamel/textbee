@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { ApiEndpoints } from '@/config/api'
+import { useI18n } from '@/lib/i18n'
 
 const STORAGE_KEYS = {
   LAST_SHOWN: 'survey_modal_last_shown',
@@ -22,6 +23,7 @@ const SHOW_INTERVAL = 1 * 60 * 60 * 1000 // 1 hour in milliseconds
 const RANDOM_CHANCE = 0.5 // 50% chance to show when eligible
 
 export const SurveyModal = () => {
+  const { t } = useI18n()
   const [isOpen, setIsOpen] = useState(false)
 
   const {
@@ -132,7 +134,7 @@ export const SurveyModal = () => {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className='sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col'>
         <DialogHeader>
-          <DialogTitle>Help us improve textbee</DialogTitle>
+          <DialogTitle>{t('modals.surveyTitle')}</DialogTitle>
         </DialogHeader>
 
         <div className='flex-1 min-h-0'>
@@ -148,9 +150,9 @@ export const SurveyModal = () => {
                 marginHeight={0}
                 marginWidth={0}
                 className='rounded-lg'
-                title='textbee.dev feedback survey'
+                title={t('modals.surveyIframeTitle')}
               >
-                Loading...
+                {t('modals.loading')}
               </iframe>
             </div>
           )}
@@ -159,10 +161,10 @@ export const SurveyModal = () => {
         <DialogFooter className='sticky bottom-0 bg-background pt-4 border-t mt-4 flex justify-between'>
           <div className='flex space-x-2'>
             <Button variant='outline' size='sm' onClick={handleRemindLater}>
-              Remind Me Later
+              {t('modals.remindLater')}
             </Button>
             <Button variant='outline' size='sm' onClick={handleSubmitted}>
-              Already Submitted
+              {t('modals.alreadySubmitted')}
             </Button>
           </div>
           <Button
@@ -174,13 +176,13 @@ export const SurveyModal = () => {
               if (iframe) {
                 iframe.focus()
                 alert(
-                  'Please scroll down in the form and click the Submit button to complete the survey.'
+                  t('modals.completeSurveyPrompt')
                 )
               }
             }}
             className='bg-primary text-primary-foreground hover:bg-primary/90'
           >
-            Complete Survey
+            {t('modals.completeSurvey')}
           </Button>
         </DialogFooter>
       </DialogContent>

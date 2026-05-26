@@ -16,6 +16,7 @@ import httpBrowserClient from '@/lib/httpBrowserClient'
 import { ApiEndpoints } from '@/config/api'
 import { Badge } from '@/components/ui/badge'
 import { Copy, Check } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 const STORAGE_KEYS = {
     DISMISSED: 'black_friday_modal_dismissed',
@@ -25,6 +26,7 @@ const STORAGE_KEYS = {
 const SHOW_INTERVAL = 6 * 60 * 60 * 1000 // 6 hours
 
 export default function BlackFridayModal() {
+    const { t } = useI18n()
     const [isOpen, setIsOpen] = useState(false)
     const [copiedCode, setCopiedCode] = useState<string | null>(null)
 
@@ -75,13 +77,13 @@ export default function BlackFridayModal() {
             <DialogContent className="sm:max-w-xl border-2 border-purple-500/20 shadow-2xl shadow-purple-500/10">
                 <DialogHeader>
                     <div className="mx-auto bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-2 animate-pulse">
-                        LIMITED TIME OFFER
+                        {t('offers.limitedTime')}
                     </div>
                     <DialogTitle className="text-2xl font-bold text-center flex items-center justify-center gap-2">
-                        🔥 Black Friday Sale
+                        {t('offers.blackFridayTitle')}
                     </DialogTitle>
                     <DialogDescription className="text-center text-base">
-                        Upgrade to Pro and unlock the full potential of textbee.
+                        {t('offers.blackFridayDescription')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -89,10 +91,10 @@ export default function BlackFridayModal() {
                     {/* Benefits List */}
                     <div className="grid grid-cols-2 gap-2 text-sm">
                         {[
-                            "Increased SMS limits",
-                            "No daily limits",
-                            "No bulk send limits",
-                            "Priority support",
+                            t('offers.increasedSmsLimits'),
+                            t('offers.noDailyLimits'),
+                            t('offers.noBulkLimits'),
+                            t('offers.prioritySupport'),
                         ].map((benefit, i) => (
                             <div key={i} className="flex items-center gap-2">
                                 <div className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
@@ -107,13 +109,17 @@ export default function BlackFridayModal() {
                         <div className="bg-muted p-4 rounded-lg space-y-3 flex flex-col justify-between">
                             <div className="flex items-start justify-between">
                                 <div className="flex flex-col">
-                                    <span className="font-medium">Monthly Plan</span>
+                                    <span className="font-medium">
+                                        {t('offers.monthlyPlan')}
+                                    </span>
                                     <div className="flex items-center gap-2 text-sm">
                                         <span className="text-muted-foreground line-through">$9.99</span>
                                         <span className="font-bold text-green-600">$5.99</span>
                                     </div>
                                 </div>
-                                <Badge variant="secondary" className="bg-black text-white hover:bg-black/90">40% OFF</Badge>
+                                <Badge variant="secondary" className="bg-black text-white hover:bg-black/90">
+                                    {t('offers.percentOff', { percent: 40 })}
+                                </Badge>
                             </div>
                             <div className="flex items-center gap-2 bg-background p-2 rounded border border-dashed border-primary/50">
                                 <code className="flex-1 font-mono font-bold text-center text-primary text-sm">BLACKFRIDAY40</code>
@@ -125,17 +131,21 @@ export default function BlackFridayModal() {
 
                         <div className="relative bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-4 rounded-lg space-y-3 border border-purple-200 dark:border-purple-800 flex flex-col justify-between">
                             <div className="absolute -top-3 right-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                                BEST VALUE
+                                {t('offers.bestValue')}
                             </div>
                             <div className="flex items-start justify-between">
                                 <div className="flex flex-col">
-                                    <span className="font-medium">Yearly Plan</span>
+                                    <span className="font-medium">
+                                        {t('offers.yearlyPlan')}
+                                    </span>
                                     <div className="flex items-center gap-2 text-sm">
                                         <span className="text-muted-foreground line-through">$99.90</span>
                                         <span className="font-bold text-green-600">$49.90</span>
                                     </div>
                                 </div>
-                                <Badge variant="secondary" className="bg-black text-white hover:bg-black/90">50% OFF</Badge>
+                                <Badge variant="secondary" className="bg-black text-white hover:bg-black/90">
+                                    {t('offers.percentOff', { percent: 50 })}
+                                </Badge>
                             </div>
                             <div className="flex items-center gap-2 bg-background p-2 rounded border border-dashed border-primary/50">
                                 <code className="flex-1 font-mono font-bold text-center text-primary text-sm">BLACKFRIDAY50</code>
@@ -147,25 +157,25 @@ export default function BlackFridayModal() {
                     </div>
 
                     <p className="text-xs text-center text-muted-foreground">
-                        Apply code at checkout to redeem.
+                        {t('offers.applyCode')}
                     </p>
                 </div>
 
                 <DialogFooter className="flex-col sm:flex-col gap-2">
                     <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold h-11 shadow-lg shadow-purple-500/20" asChild>
                         <Link href="/checkout/pro">
-                            Claim Offer Now
+                            {t('offers.claimOffer')}
                         </Link>
                     </Button>
                     <p className="text-[10px] text-center text-muted-foreground">
-                        Cancel anytime. Secure payment.
+                        {t('offers.cancelAnytime')}
                     </p>
                     <div className="flex items-center justify-between w-full pt-1">
                         <Button variant="ghost" size="sm" onClick={handleRemindLater} className="text-muted-foreground h-auto py-1">
-                            Remind me later
+                            {t('modals.remindMeLater')}
                         </Button>
                         <Button variant="ghost" size="sm" onClick={handleDismiss} className="text-muted-foreground hover:text-destructive h-auto py-1">
-                            Don't show again
+                            {t('offers.dontShowAgain')}
                         </Button>
                     </div>
                 </DialogFooter>

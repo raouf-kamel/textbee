@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
 import type { RateLimitErrorData } from '@/lib/utils/errorHandler'
+import { en } from '@/lib/locales/en'
+import { useI18n } from '@/lib/i18n'
 
 interface RateLimitErrorProps {
   errorData?: RateLimitErrorData
@@ -20,7 +22,8 @@ export function RateLimitError({
   variant = 'alert',
   className,
 }: RateLimitErrorProps) {
-  const message = errorData?.message || 'You have reached your usage limit.'
+  const { t } = useI18n()
+  const message = errorData?.message || t('shared.usageLimitReached')
 
   if (variant === 'inline') {
     return (
@@ -28,10 +31,10 @@ export function RateLimitError({
         <p className="text-sm text-destructive">{message}</p>
         <div className="flex gap-2 flex-wrap">
           <Button asChild variant="default" size="sm">
-            <Link href="/checkout/pro">Upgrade Plan</Link>
+            <Link href="/checkout/pro">{t('shared.upgradePlan')}</Link>
           </Button>
           <p className="text-xs text-muted-foreground flex items-center">
-            or wait for your limit to reset
+            {t('shared.waitForLimitReset')}
           </p>
         </div>
       </div>
@@ -41,15 +44,15 @@ export function RateLimitError({
   return (
     <Alert variant="destructive" className={className}>
       <AlertCircle className="h-4 w-4" />
-      <AlertTitle>Limit Reached</AlertTitle>
+      <AlertTitle>{t('shared.limitReached')}</AlertTitle>
       <AlertDescription className="flex flex-col gap-3 mt-2">
         <p>{message}</p>
         <div className="flex gap-2 flex-wrap items-center">
           <Button asChild variant="outline" size="sm">
-            <Link href="/checkout/pro">Upgrade Plan</Link>
+            <Link href="/checkout/pro">{t('shared.upgradePlan')}</Link>
           </Button>
           <span className="text-xs text-muted-foreground">
-            or wait for your limit to reset
+            {t('shared.waitForLimitReset')}
           </span>
         </div>
       </AlertDescription>
@@ -64,6 +67,6 @@ export function RateLimitError({
 export function formatRateLimitMessageForToast(
   errorData?: RateLimitErrorData
 ): string {
-  const baseMessage = errorData?.message || 'You have reached your usage limit.'
-  return `${baseMessage} Please upgrade your plan or wait for your limit to reset.`
+  const baseMessage = errorData?.message || en.shared.usageLimitReached
+  return `${baseMessage} ${en.shared.upgradeOrWait}`
 }

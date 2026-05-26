@@ -21,6 +21,7 @@ import {
 import React from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WebhookPayloadModal } from './webhook-payload-modal' // Import your modal
+import { useI18n } from '@/lib/i18n'
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -35,6 +36,7 @@ export function DataTable<TData, TValue>({
   searchKey,
   isLoading,
 }: DataTableProps<TData, TValue>) {
+  const { t } = useI18n()
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
@@ -127,7 +129,7 @@ export function DataTable<TData, TValue>({
                     colSpan={columns.length}
                     className="h-36 text-center"
                   >
-                    No results.
+                    {t('webhooks.noResults')}
                   </TableCell>
                 </TableRow>
               )}

@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ExternalLinks } from '@/config/external-links'
+import { useI18n } from '@/lib/i18n'
 
 // Constants for localStorage keys and timing
 const STORAGE_KEYS = {
@@ -20,6 +21,7 @@ const SHOW_INTERVAL = 1 * 24 * 60 * 60 * 1000 // 1 days in milliseconds
 const RANDOM_CHANCE = 0.2 // 20% chance to show when eligible
 
 export const JoinCommunityModal = () => {
+  const { t } = useI18n()
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -62,22 +64,21 @@ export const JoinCommunityModal = () => {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className='sm:max-w-xl'>
         <DialogHeader>
-          <DialogTitle>Join Our Discord Community!</DialogTitle>
+          <DialogTitle>{t('modals.joinDiscordTitle')}</DialogTitle>
         </DialogHeader>
 
         <div className='py-4'>
           <p className='text-muted-foreground'>
-            Join our Discord community to connect with other users, get help,
-            and stay updated with the latest announcements!
+            {t('modals.joinDiscordDescription')}
           </p>
         </div>
 
         <div className='flex flex-col gap-3 sm:flex-row sm:justify-end'>
           <Button variant='outline' onClick={handleRemindLater}>
-            Remind Me Later
+            {t('modals.remindLater')}
           </Button>
           <Button variant='outline' onClick={handleJoined} className='gap-2'>
-            I&apos;ve Already Joined
+            {t('modals.alreadyJoined')}
           </Button>
           <Button
             variant='default'
@@ -87,7 +88,7 @@ export const JoinCommunityModal = () => {
             }}
             className='gap-2'
           >
-            Join Discord
+            {t('contribute.joinDiscord')}
           </Button>
         </div>
       </DialogContent>

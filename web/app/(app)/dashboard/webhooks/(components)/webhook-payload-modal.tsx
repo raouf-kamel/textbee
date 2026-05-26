@@ -11,6 +11,7 @@ import {
   Copy,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { useI18n } from '@/lib/i18n'
 
 interface SmsData {
   _id: string
@@ -36,11 +37,12 @@ interface WebhookPayloadModalProps {
 
 export function WebhookPayloadModal({ isOpen, onClose, smsData, payload }: WebhookPayloadModalProps) {
   const { toast } = useToast()
+  const { locale, t } = useI18n()
   
   if (!smsData) return null
   
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
+    return new Date(dateString).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -56,8 +58,8 @@ export function WebhookPayloadModal({ isOpen, onClose, smsData, payload }: Webho
       const jsonString = JSON.stringify(payload, null, 2)
       await navigator.clipboard.writeText(jsonString)
       toast({
-        title: "Copied!",
-        description: "Payload copied to clipboard",
+        title: t('shared.copied'),
+        description: t('webhooks.payloadCopied'),
         duration: 2000,
       })
     } catch (err) {
@@ -70,8 +72,8 @@ export function WebhookPayloadModal({ isOpen, onClose, smsData, payload }: Webho
       document.execCommand('copy')
       document.body.removeChild(textArea)
       toast({
-        title: "Copied!",
-        description: "Payload copied to clipboard",
+        title: t('shared.copied'),
+        description: t('webhooks.payloadCopied'),
         duration: 2000,
       })
     }
@@ -82,7 +84,7 @@ export function WebhookPayloadModal({ isOpen, onClose, smsData, payload }: Webho
       <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <DialogTitle className="flex items-center gap-2">
-            Webhook Notification
+            {t('webhooks.notification')}
           </DialogTitle>
         </DialogHeader>
 
@@ -90,7 +92,7 @@ export function WebhookPayloadModal({ isOpen, onClose, smsData, payload }: Webho
           {payload && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-lg">Payload</h3>
+                <h3 className="font-semibold text-lg">{t('webhooks.payload')}</h3>
                 <Button
                   variant="outline"
                   size="sm"
@@ -98,7 +100,7 @@ export function WebhookPayloadModal({ isOpen, onClose, smsData, payload }: Webho
                   className="h-8"
                 >
                   <Copy className="h-3 w-3 mr-1" />
-                  Copy
+                  {t('sms.copy')}
                 </Button>
               </div>
               <div className="bg-gray-50 dark:bg-gray-900 rounded-md border p-4 overflow-auto max-h-64">
@@ -112,7 +114,9 @@ export function WebhookPayloadModal({ isOpen, onClose, smsData, payload }: Webho
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Status */}
             <div className="space-y-2">
-              <h3 className="font-semibold text-sm">Webhook Notification Status</h3>
+              <h3 className="font-semibold text-sm">
+                {t('webhooks.notificationStatus')}
+              </h3>
               <p className="text-sm bg-muted/30 rounded-md p-2 capitalize">
                 {smsData.webhookStatus}
               </p>
@@ -120,10 +124,10 @@ export function WebhookPayloadModal({ isOpen, onClose, smsData, payload }: Webho
             
             <div className="space-y-2">
               <h3 className="font-semibold text-sm flex items-center gap-x-2">
-                Created At
+                {t('webhooks.createdAt')}
               </h3>
               <p className="text-sm bg-muted/30 rounded-md p-2 capitalize">
-                {new Date(smsData.createdAt).toLocaleDateString('en-GB')}
+                {formatDate(smsData.createdAt)}
               </p>
             </div>
           </div>

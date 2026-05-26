@@ -19,6 +19,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
 } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type User = {
@@ -384,6 +385,7 @@ export default function UserManagementModal({
   onClose: () => void
   onSuccess: () => void
 }) {
+  const { t } = useI18n()
   // Form state
   const [role, setRole] = useState(user.role)
   const [isBanned, setIsBanned] = useState(user.isBanned)
@@ -1015,23 +1017,23 @@ export default function UserManagementModal({
                   }}
                   className='rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 >
-                  <option value='all'>All statuses</option>
-                  <option value='pending'>Pending</option>
-                  <option value='dispatched'>Dispatched</option>
-                  <option value='received_by_device'>On device</option>
-                  <option value='sending'>Sending</option>
-                  <option value='sent'>Sent</option>
-                  <option value='delivered'>Delivered</option>
-                  <option value='failed'>Failed</option>
-                  <option value='delivery_failed'>Delivery failed</option>
-                  <option value='received'>Received</option>
-                  <option value='unknown'>Unknown</option>
-                  <option value='cancelled'>Cancelled</option>
+                  <option value='all'>{t('admin.allStatuses')}</option>
+                  <option value='pending'>{t('sms.statusPending')}</option>
+                  <option value='dispatched'>{t('sms.statusDispatched')}</option>
+                  <option value='received_by_device'>{t('sms.statusOnDevice')}</option>
+                  <option value='sending'>{t('sms.statusSending')}</option>
+                  <option value='sent'>{t('sms.statusSent')}</option>
+                  <option value='delivered'>{t('sms.statusDelivered')}</option>
+                  <option value='failed'>{t('sms.statusFailed')}</option>
+                  <option value='delivery_failed'>{t('sms.statusDeliveryFailed')}</option>
+                  <option value='received'>{t('sms.received')}</option>
+                  <option value='unknown'>{t('devices.unknown')}</option>
+                  <option value='cancelled'>{t('admin.cancelled')}</option>
                 </select>
                 <button
                   onClick={() => refetchMessages()}
                   className='rounded-lg border border-gray-200 bg-gray-50 p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                  title='Refresh messages'
+                  title={t('admin.refreshMessages')}
                 >
                   <Loader2 className={`h-4 w-4 ${messagesLoading ? 'animate-spin' : ''}`} />
                 </button>
@@ -1043,7 +1045,9 @@ export default function UserManagementModal({
                 <Loader2 className='h-6 w-6 animate-spin text-gray-400' />
               </div>
             ) : messages.length === 0 ? (
-              <p className='py-4 text-center text-sm text-gray-400'>No messages found</p>
+              <p className='py-4 text-center text-sm text-gray-400'>
+                {t('sms.noMessages')}
+              </p>
             ) : (
               <div className='overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700'>
                 <table className='w-full min-w-[900px] text-sm'>

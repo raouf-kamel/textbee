@@ -3,13 +3,16 @@ import { Button } from '@/components/ui/button'
 import { ExternalLinks } from '@/config/external-links'
 import { Github, Heart, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
+import { useI18n } from '@/lib/i18n'
 
 export default function CommunityAlert() {
+  const { t } = useI18n()
+
   return (
     <Alert>
       <AlertDescription className='flex flex-wrap items-center gap-2 md:gap-4'>
         <span className='flex-1'>
-          Join our community and support the development!
+          {t('alerts.communitySupport')}
         </span>
         <div className='flex flex-wrap gap-1 md:gap-2'>
           <Button variant='outline' size='sm' asChild>

@@ -6,6 +6,8 @@ import { DataTable } from './data-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import { Eye } from 'lucide-react'
+import { useMemo } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface ProductClientProps {
   data: ProductColumns[]
@@ -26,59 +28,62 @@ export type ProductColumns = {
 }
 
 
-export const columns: ColumnDef<ProductColumns>[] = [
-  {
-    accessorKey: 'event',
-    header: 'Event',
-  },
-  {
-    accessorKey: 'deviceName',
-    header: 'Device',
-    cell: ({ row }) => {
-      const deviceName = row.original.deviceName
-      // If deviceName is an array with two lines
-      if (Array.isArray(deviceName) && deviceName.length === 2) {
-        return (
-          <div className="flex flex-col">
-            <span className="font-medium">{deviceName[0]}</span>
-            <span className="text-xs text-muted-foreground">
-              {deviceName[1]}
-            </span>
-          </div>
-        )
-      }
-      // Fallback for single line
-      return <span>{deviceName}</span>
-    },
-  },
-  {
-    accessorKey: 'status',
-    header: 'Status',
-  },
-  {
-    accessorKey: 'webhookSubscriptionData.deliveryUrl',
-    header: 'Delivery Url',
-  },
-  {
-    accessorKey: 'createdAt',
-    header: 'Created At',
-  },
-  {
-    id: 'actions',
-    header: 'Actions',
-    cell: ({ row }) => (
-      <Button variant="ghost" size="sm" disabled={!row.original.payload}>
-        <Eye className="h-4 w-4" />
-      </Button>
-    ),
-  },
-]
 const formatDate = (dateString: string) => {
   return format(new Date(dateString), 'MMM dd, yyyy h:mm a')
 }
 const ProductClient = ({ data, isLoading, status = 'delivered' }) => {
   const { storeId } = useParams()
   const router = useRouter()
+  const { t } = useI18n()
+
+  const columns = useMemo<ColumnDef<ProductColumns>[]>(
+    () => [
+      {
+        accessorKey: 'event',
+        header: t('webhooks.event'),
+      },
+      {
+        accessorKey: 'deviceName',
+        header: t('sms.device'),
+        cell: ({ row }) => {
+          const deviceName = row.original.deviceName
+          if (Array.isArray(deviceName) && deviceName.length === 2) {
+            return (
+              <div className="flex flex-col">
+                <span className="font-medium">{deviceName[0]}</span>
+                <span className="text-xs text-muted-foreground">
+                  {deviceName[1]}
+                </span>
+              </div>
+            )
+          }
+          return <span>{deviceName}</span>
+        },
+      },
+      {
+        accessorKey: 'status',
+        header: t('common.status'),
+      },
+      {
+        accessorKey: 'webhookSubscriptionData.deliveryUrl',
+        header: t('webhooks.deliveryUrl'),
+      },
+      {
+        accessorKey: 'createdAt',
+        header: t('webhooks.createdAt'),
+      },
+      {
+        id: 'actions',
+        header: t('admin.action'),
+        cell: ({ row }) => (
+          <Button variant="ghost" size="sm" disabled={!row.original.payload}>
+            <Eye className="h-4 w-4" />
+          </Button>
+        ),
+      },
+    ],
+    [t],
+  )
 
   const formatted = data.map((d) => ({
     ...d,
