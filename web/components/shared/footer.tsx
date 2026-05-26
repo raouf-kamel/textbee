@@ -15,7 +15,7 @@ export default function Footer() {
         <div className='flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0'>
           <Image
             src='/images/logo.png'
-            alt='textbee Logo'
+            alt={t('common.logoAlt')}
             width={24}
             height={24}
             className='h-6 w-6 bg-white rounded-full'

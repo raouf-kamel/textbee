@@ -81,7 +81,7 @@ export default function AppHeader({ session }: { session: Session }) {
       <SheetTrigger asChild>
         <Button variant='ghost' className='md:hidden' size='icon'>
           <Menu className='h-5 w-5' />
-          <span className='sr-only'>Menu</span>
+          <span className='sr-only'>{t('common.menu')}</span>
         </Button>
       </SheetTrigger>
       <SheetContent
@@ -160,7 +160,7 @@ export default function AppHeader({ session }: { session: Session }) {
           >
             <Image
               src='/images/logo.png'
-              alt='textbee Logo'
+              alt={t('common.logoAlt')}
               width={24}
               height={24}
               className='h-6 w-6 bg-white rounded-full'

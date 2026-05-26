@@ -50,46 +50,56 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useI18n } from '@/lib/i18n'
 
-const updateProfileSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email().optional(),
-  phone: z
-    .string()
-    .regex(/^\+?\d{0,14}$/, 'Invalid phone number')
-    .optional(),
-})
+type UpdateProfileFormData = {
+  name: string
+  email?: string
+  phone?: string
+}
 
-type UpdateProfileFormData = z.infer<typeof updateProfileSchema>
-
-const changePasswordSchema = z
-  .object({
-    oldPassword: z.string().min(1, 'Old password is required'),
-    newPassword: z
-      .string()
-      .min(8, { message: 'Password must be at least 8 characters long' }),
-    confirmPassword: z
-      .string()
-      .min(4, { message: 'Please confirm your password' }),
-  })
-  .superRefine((data, ctx) => {
-    if (data.newPassword !== data.confirmPassword) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Passwords must match',
-        path: ['confirmPassword'],
-      })
-    }
-  })
-
-type ChangePasswordFormData = z.infer<typeof changePasswordSchema>
+type ChangePasswordFormData = {
+  oldPassword: string
+  newPassword: string
+  confirmPassword: string
+}
 
 export default function AccountSettings() {
+  const { locale, t } = useI18n()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('')
   const { update: updateSession } = useSession()
 
   const { toast } = useToast()
+
+  const updateProfileSchema = z.object({
+    name: z.string().min(1, t('account.nameRequired')),
+    email: z.string().email(t('auth.invalidEmail')).optional(),
+    phone: z
+      .string()
+      .regex(/^\+?\d{0,14}$/, t('account.invalidPhone'))
+      .optional(),
+  })
+
+  const changePasswordSchema = z
+    .object({
+      oldPassword: z.string().min(1, t('account.oldPasswordRequired')),
+      newPassword: z
+        .string()
+        .min(8, { message: t('auth.passwordTooShort') }),
+      confirmPassword: z
+        .string()
+        .min(4, { message: t('auth.confirmPasswordRequired') }),
+    })
+    .superRefine((data, ctx) => {
+      if (data.newPassword !== data.confirmPassword) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t('auth.passwordsMustMatch'),
+          path: ['confirmPassword'],
+        })
+      }
+    })
 
   const {
     data: currentUser,
@@ -119,7 +129,7 @@ export default function AccountSettings() {
   const handleDeleteAccount = () => {
     if (deleteConfirmEmail !== currentUser?.email) {
       toast({
-        title: 'Please enter your correct email address',
+        title: t('account.correctEmailRequired'),
       })
       return
     }
@@ -141,7 +151,7 @@ export default function AccountSettings() {
     onSuccess: () => {
       refetchCurrentUser()
       toast({
-        title: 'Profile updated successfully!',
+        title: t('account.profileUpdated'),
       })
       updateSession({
         name: updateProfileForm.getValues().name,
@@ -150,7 +160,7 @@ export default function AccountSettings() {
     },
     onError: () => {
       toast({
-        title: 'Failed to update profile',
+        title: t('account.failedUpdateProfile'),
       })
     },
   })
@@ -165,17 +175,17 @@ export default function AccountSettings() {
       httpBrowserClient.post(ApiEndpoints.auth.changePassword(), data),
     onSuccess: () => {
       toast({
-        title: 'Password changed successfully!',
+        title: t('account.passwordChanged'),
       })
       changePasswordForm.reset()
     },
     onError: (error) => {
       const errorMessage = (error as any).response?.data?.error
       changePasswordForm.setError('root.serverError', {
-        message: errorMessage || 'Failed to change password',
+        message: errorMessage || t('account.failedChangePassword'),
       })
       toast({
-        title: 'Failed to change password',
+        title: t('account.failedChangePassword'),
       })
     },
   })
@@ -194,12 +204,12 @@ export default function AccountSettings() {
       }),
     onSuccess: () => {
       toast({
-        title: 'Account deletion request submitted',
+        title: t('account.deletionSubmitted'),
       })
     },
     onError: () => {
       toast({
-        title: 'Failed to submit account deletion request',
+        title: t('account.failedDeletionRequest'),
       })
     },
   })
@@ -226,7 +236,7 @@ export default function AccountSettings() {
     if (subscriptionError)
       return (
         <p className='text-sm text-destructive'>
-          Failed to load subscription information
+          {t('account.failedLoadSubscription')}
         </p>
       )
 
@@ -235,9 +245,9 @@ export default function AccountSettings() {
       amount: number | null | undefined,
       currency: string | null | undefined
     ) => {
-      if (amount == null || currency == null) return 'Free'
+      if (amount == null || currency == null) return t('account.free')
 
-      const formatter = new Intl.NumberFormat('en-US', {
+      const formatter = new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-US', {
         style: 'currency',
         currency: currency.toUpperCase() || 'USD',
         minimumFractionDigits: 2,
@@ -248,7 +258,9 @@ export default function AccountSettings() {
 
     const getBillingInterval = (interval: string | null | undefined) => {
       if (!interval) return ''
-      return interval.toLowerCase() === 'month' ? 'monthly' : 'yearly'
+      return interval.toLowerCase() === 'month'
+        ? t('account.monthly')
+        : t('account.yearly')
     }
 
     return (
@@ -256,11 +268,11 @@ export default function AccountSettings() {
         <div className='flex items-center justify-between mb-4'>
           <div>
             <h3 className='text-lg font-bold text-gray-900 dark:text-white'>
-              {currentSubscription?.plan?.name || 'Free Plan'}
+              {currentSubscription?.plan?.name || t('account.freePlan')}
             </h3>
             <div className='flex items-center gap-2'>
               <p className='text-xs text-gray-500 dark:text-gray-400'>
-                Current subscription
+                {t('account.currentSubscription')}
               </p>
               {currentSubscription?.amount > 0 && (
                 <Badge variant='outline' className='text-xs font-medium'>
@@ -312,7 +324,7 @@ export default function AccountSettings() {
                     .split('_')
                     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                     .join(' ')
-                : 'Active'}
+                : t('common.active')}
             </span>
           </div>
         </div>
@@ -322,18 +334,18 @@ export default function AccountSettings() {
             <Calendar className='h-4 w-4 text-brand-600 dark:text-brand-400' />
             <div>
               <p className='text-xs text-gray-500 dark:text-gray-400'>
-                Start Date
+                {t('account.startDate')}
               </p>
               <p className='text-sm font-medium text-gray-900 dark:text-white'>
                 {currentSubscription?.subscriptionStartDate
                   ? new Date(
                       currentSubscription?.subscriptionStartDate
-                    ).toLocaleDateString('en-US', {
+                    ).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', {
                       month: 'long',
                       day: 'numeric',
                       year: 'numeric',
                     })
-                  : 'N/A'}
+                  : t('sms.notAvailable')}
               </p>
             </div>
           </div>
@@ -342,34 +354,34 @@ export default function AccountSettings() {
             <Calendar className='h-4 w-4 text-brand-600 dark:text-brand-400' />
             <div>
               <p className='text-xs text-gray-500 dark:text-gray-400'>
-                Next Payment
+                {t('account.nextPayment')}
               </p>
               <p className='text-sm font-medium text-gray-900 dark:text-white'>
                 {currentSubscription?.currentPeriodEnd
                   ? new Date(
                       currentSubscription?.currentPeriodEnd
-                    ).toLocaleDateString('en-US', {
+                    ).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', {
                       month: 'long',
                       day: 'numeric',
                       year: 'numeric',
                     })
-                  : 'N/A'}
+                  : t('sms.notAvailable')}
               </p>
             </div>
           </div>
 
           <div className='col-span-2 bg-white dark:bg-gray-800 p-3 rounded-md shadow-sm'>
             <p className='text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium'>
-              Usage Limits
+              {t('account.usageLimits')}
             </p>
             <div className='grid grid-cols-3 gap-3'>
               <div className='bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md'>
                 <p className='text-xs text-gray-500 dark:text-gray-400'>
-                  Daily
+                  {t('account.daily')}
                 </p>
                 <p className='text-sm font-medium text-gray-900 dark:text-white'>
                   {currentSubscription?.plan?.dailyLimit === -1
-                    ? 'Unlimited'
+                    ? t('account.unlimited')
                     : currentSubscription?.plan?.dailyLimit || '0'}
                   {currentSubscription?.plan?.dailyLimit === -1 && (
                     <TooltipProvider>
@@ -380,7 +392,7 @@ export default function AccountSettings() {
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Unlimited (within monthly limit)</p>
+                          <p>{t('account.unlimitedMonthly')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -389,11 +401,11 @@ export default function AccountSettings() {
               </div>
               <div className='bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md'>
                 <p className='text-xs text-gray-500 dark:text-gray-400'>
-                  Monthly
+                  {t('account.monthlyLimit')}
                 </p>
                 <p className='text-sm font-medium text-gray-900 dark:text-white'>
                   {currentSubscription?.plan?.monthlyLimit === -1
-                    ? 'Unlimited'
+                    ? t('account.unlimited')
                     : currentSubscription?.plan?.monthlyLimit?.toLocaleString() ||
                       '0'}
                   {currentSubscription?.plan?.monthlyLimit === -1 && (
@@ -405,7 +417,7 @@ export default function AccountSettings() {
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Unlimited (within fair usage)</p>
+                          <p>{t('account.unlimitedFairUsage')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -413,10 +425,12 @@ export default function AccountSettings() {
                 </p>
               </div>
               <div className='bg-gray-50 dark:bg-gray-700/50 p-2 rounded-md'>
-                <p className='text-xs text-gray-500 dark:text-gray-400'>Bulk</p>
+                <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  {t('account.bulk')}
+                </p>
                 <p className='text-sm font-medium text-gray-900 dark:text-white'>
                   {currentSubscription?.plan?.bulkSendLimit === -1
-                    ? 'Unlimited'
+                    ? t('account.unlimited')
                     : currentSubscription?.plan?.bulkSendLimit || '0'}
                   {currentSubscription?.plan?.bulkSendLimit === -1 && (
                     <TooltipProvider>
@@ -427,7 +441,7 @@ export default function AccountSettings() {
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Unlimited (within monthly limit)</p>
+                          <p>{t('account.unlimitedMonthly')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -445,14 +459,14 @@ export default function AccountSettings() {
               href='/checkout/pro'
               className='text-xs font-medium text-white bg-brand-600 hover:bg-brand-700 px-3 py-1.5 rounded-md transition-colors'
             >
-              Upgrade to Pro →
+              {t('account.upgradeToPro')}
             </Link>
           ) : (
             <Link
               href={polarCustomerPortalRequestUrl(currentUser?.email)}
               className='text-xs font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 rounded-md transition-colors'
             >
-              Manage Subscription →
+              {t('account.manageSubscription')}
             </Link>
           )}
         </div>
@@ -474,9 +488,9 @@ export default function AccountSettings() {
         <CardHeader>
           <div className='flex items-center gap-2'>
             <UserCircle className='h-5 w-5' />
-            <CardTitle>Profile Information</CardTitle>
+            <CardTitle>{t('account.profileInformation')}</CardTitle>
           </div>
-          <CardDescription>Update your profile information</CardDescription>
+          <CardDescription>{t('account.profileInformationDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -486,11 +500,11 @@ export default function AccountSettings() {
             className='space-y-4'
           >
             <div className='space-y-2'>
-              <Label htmlFor='name'>Full Name</Label>
+              <Label htmlFor='name'>{t('common.fullName')}</Label>
               <Input
                 id='name'
                 {...updateProfileForm.register('name')}
-                placeholder='Enter your full name'
+                placeholder={t('account.fullNamePlaceholder')}
                 defaultValue={currentUser?.name}
               />
               {updateProfileForm.formState.errors.name && (
@@ -502,11 +516,11 @@ export default function AccountSettings() {
 
             <div className='space-y-2'>
               <Label htmlFor='email' className='flex items-center gap-2'>
-                Email Address
+                {t('account.emailAddress')}
                 {currentUser?.emailVerifiedAt && (
                   <Badge variant='secondary' className='ml-2'>
                     <Shield className='h-3 w-3 mr-1' />
-                    Verified
+                    {t('account.verified')}
                   </Badge>
                 )}
               </Label>
@@ -515,7 +529,7 @@ export default function AccountSettings() {
                   id='email'
                   type='email'
                   {...updateProfileForm.register('email')}
-                  placeholder='Enter your email'
+                  placeholder={t('account.emailPlaceholder')}
                   defaultValue={currentUser?.email}
                   disabled
                 />
@@ -531,12 +545,12 @@ export default function AccountSettings() {
                     ) : (
                       <Mail className='h-4 w-4 mr-2' />
                     )}
-                    Verify
+                {t('account.verify')}
                   </Button>
                 ) : (
                   <Button variant='outline' disabled>
                     <Check className='h-4 w-4 mr-2' />
-                    Verified
+                    {t('account.verified')}
                   </Button>
                 )}
               </div>
@@ -548,12 +562,12 @@ export default function AccountSettings() {
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='phone'>Phone Number</Label>
+              <Label htmlFor='phone'>{t('account.phoneNumber')}</Label>
               <Input
                 id='phone'
                 type='tel'
                 {...updateProfileForm.register('phone')}
-                placeholder='Enter your phone number'
+                placeholder={t('account.phonePlaceholder')}
                 defaultValue={currentUser?.phone}
               />
               {updateProfileForm.formState.errors.phone && (
@@ -565,7 +579,7 @@ export default function AccountSettings() {
 
             {isUpdateProfileSuccess && (
               <p className='text-sm text-green-500'>
-                Profile updated successfully!
+                {t('account.profileUpdated')}
               </p>
             )}
 
@@ -577,7 +591,7 @@ export default function AccountSettings() {
               {isUpdatingProfile ? (
                 <Loader2 className='h-4 w-4 animate-spin mr-2' />
               ) : null}
-              Save Changes
+              {t('account.saveChanges')}
             </Button>
           </form>
         </CardContent>
@@ -586,12 +600,12 @@ export default function AccountSettings() {
       <Card>
         <CardHeader>
           <div className='flex items-center gap-2'>
-            <CardTitle>Change Password</CardTitle>
+            <CardTitle>{t('account.changePassword')}</CardTitle>
           </div>
           <CardDescription>
-            If you signed in with google, your can reset your password{' '}
+            {t('account.googlePasswordResetPrefix')}
             <Link href={Routes.resetPassword} className='underline'>
-              here
+              {t('account.here')}
             </Link>
             .
           </CardDescription>
@@ -604,12 +618,12 @@ export default function AccountSettings() {
             className='space-y-4'
           >
             <div className='space-y-2'>
-              <Label htmlFor='oldPassword'>Old Password</Label>
+              <Label htmlFor='oldPassword'>{t('account.oldPassword')}</Label>
               <Input
                 id='oldPassword'
                 type='password'
                 {...changePasswordForm.register('oldPassword')}
-                placeholder='Enter your old password'
+                placeholder={t('account.oldPasswordPlaceholder')}
               />
               {changePasswordForm.formState.errors.oldPassword && (
                 <p className='text-sm text-destructive'>
@@ -619,12 +633,12 @@ export default function AccountSettings() {
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='newPassword'>New Password</Label>
+              <Label htmlFor='newPassword'>{t('auth.newPassword')}</Label>
               <Input
                 id='newPassword'
                 type='password'
                 {...changePasswordForm.register('newPassword')}
-                placeholder='Enter your new password'
+                placeholder={t('account.newPasswordPlaceholder')}
               />
               {changePasswordForm.formState.errors.newPassword && (
                 <p className='text-sm text-destructive'>
@@ -634,12 +648,12 @@ export default function AccountSettings() {
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='confirmPassword'>Confirm Password</Label>
+              <Label htmlFor='confirmPassword'>{t('auth.confirmPassword')}</Label>
               <Input
                 id='confirmPassword'
                 type='password'
                 {...changePasswordForm.register('confirmPassword')}
-                placeholder='Enter your confirm password'
+                placeholder={t('account.confirmPasswordPlaceholder')}
               />
               {changePasswordForm.formState.errors.confirmPassword && (
                 <p className='text-sm text-destructive'>
@@ -656,7 +670,7 @@ export default function AccountSettings() {
 
             {isChangePasswordSuccess && (
               <p className='text-sm text-green-500'>
-                Password changed successfully!
+                {t('account.passwordChanged')}
               </p>
             )}
 
@@ -668,7 +682,7 @@ export default function AccountSettings() {
               {isChangingPassword ? (
                 <Loader2 className='h-4 w-4 animate-spin mr-2' />
               ) : null}
-              Change Password
+              {t('account.changePassword')}
             </Button>
           </form>
         </CardContent>
@@ -678,10 +692,10 @@ export default function AccountSettings() {
         <CardHeader>
           <div className='flex items-center gap-2 text-destructive'>
             <AlertTriangle className='h-5 w-5' />
-            <CardTitle>Danger Zone</CardTitle>
+            <CardTitle>{t('account.dangerZone')}</CardTitle>
           </div>
           <CardDescription>
-            Permanently delete your account and all associated data
+            {t('account.deleteAccountWarning')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -695,39 +709,39 @@ export default function AccountSettings() {
               onClick={() => setIsDeleteDialogOpen(true)}
             >
               <AlertTriangle className='mr-2 h-4 w-4' />
-              Delete Account
+              {t('account.deleteAccount')}
             </Button>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle className='flex items-center gap-2'>
                   <AlertTriangle className='h-5 w-5 text-destructive' />
-                  Delete Account
+                  {t('account.deleteAccount')}
                 </DialogTitle>
                 <DialogDescription className='pt-4'>
                   <p className='mb-4'>
-                    Are you sure you want to delete your account? This action:
+                    {t('account.deleteConfirmQuestion')}
                   </p>
                   <ul className='list-disc list-inside space-y-2 mb-4'>
-                    <li>Cannot be undone</li>
-                    <li>Will permanently delete all your data</li>
-                    <li>Will cancel all active subscriptions</li>
-                    <li>Will remove access to all services</li>
+                    <li>{t('account.deleteCannotUndo')}</li>
+                    <li>{t('account.deleteAllData')}</li>
+                    <li>{t('account.deleteSubscriptions')}</li>
+                    <li>{t('account.deleteServices')}</li>
                   </ul>
 
                   {/* enter reason for deletion text area */}
-                  <Label htmlFor='deleteReason'>Reason for deletion</Label>
+                  <Label htmlFor='deleteReason'>{t('account.deletionReason')}</Label>
                   <Textarea
                     className='my-2'
-                    placeholder='Enter your reason for deletion'
+                    placeholder={t('account.deletionReasonPlaceholder')}
                     value={deleteReason}
                     onChange={(e) => setDeleteReason(e.target.value)}
                   />
 
-                  <p>Please type your email address to confirm:</p>
+                  <p>{t('account.typeEmailToConfirm')}</p>
 
                   <Input
                     className='mt-2'
-                    placeholder='Enter your email address'
+                    placeholder={t('account.emailConfirmPlaceholder')}
                     value={deleteConfirmEmail}
                     onChange={(e) => setDeleteConfirmEmail(e.target.value)}
                   />
@@ -737,13 +751,13 @@ export default function AccountSettings() {
                       {(requestAccountDeletionError as any).response?.data
                         ?.message ||
                         requestAccountDeletionError.message ||
-                        'Failed to submit account deletion request'}
+                        t('account.failedDeletionRequest')}
                     </p>
                   )}
 
                   {isRequestAccountDeletionSuccess && (
                     <p className='text-sm text-green-500'>
-                      Account deletion request submitted
+                      {t('account.deletionSubmitted')}
                     </p>
                   )}
                 </DialogDescription>
@@ -753,7 +767,7 @@ export default function AccountSettings() {
                   variant='outline'
                   onClick={() => setIsDeleteDialogOpen(false)}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   variant='destructive'
@@ -765,7 +779,7 @@ export default function AccountSettings() {
                   ) : (
                     <AlertTriangle className='h-4 w-4 mr-2' />
                   )}
-                  Delete Account
+                  {t('account.deleteAccount')}
                 </Button>
               </DialogFooter>
             </DialogContent>

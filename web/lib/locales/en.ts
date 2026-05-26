@@ -46,6 +46,8 @@ export const en = {
     update: 'Update',
     generate: 'Generate',
     network: 'Network',
+    menu: 'Menu',
+    logoAlt: 'textbee Logo',
   },
   shared: {
     copied: 'Copied!',
@@ -246,6 +248,7 @@ export const en = {
     supportCategoryRequired: 'Support category is required',
     messageRequired: 'Message is required',
     yourName: 'Your name',
+    fullNamePlaceholder: 'Enter your full name',
     supportMessagePlaceholder: 'How can we help you?',
     supportSubmitted: 'Support request submitted',
     supportSubmittedDescription: 'We will get back to you soon.',

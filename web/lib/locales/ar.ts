@@ -46,6 +46,8 @@ export const ar = {
     update: 'تحديث',
     generate: 'إنشاء',
     network: 'الشبكة',
+    menu: 'القائمة',
+    logoAlt: 'شعار textbee',
   },
   shared: {
     copied: 'تم النسخ!',
@@ -242,6 +244,7 @@ export const ar = {
     supportCategoryRequired: 'فئة الدعم مطلوبة',
     messageRequired: 'الرسالة مطلوبة',
     yourName: 'اسمك',
+    fullNamePlaceholder: 'أدخل اسمك الكامل',
     supportMessagePlaceholder: 'كيف يمكننا مساعدتك؟',
     supportSubmitted: 'تم إرسال طلب الدعم',
     supportSubmittedDescription: 'سنعاود التواصل معك قريبًا.',
